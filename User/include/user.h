@@ -20,7 +20,8 @@
 typedef struct UDPHandler{
 	struct sockaddr_in client;
 	char buffer[BUFFSIZE];
-	int socket,clientLen;
+	int socket;
+	unsigned int clientLen;
 } *UDPHandler_p;
 
 void exitMsg(const char *msg);
