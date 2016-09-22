@@ -26,16 +26,16 @@ int main(int argc, char *argv[])
     /* Loop over the command line arguments to set the appropriate options */
     {
         int option = -1;
-        while ((option = getopt(argc, argv, "pen")) != -1) {
+        while ((option = getopt(argc, argv, "p:e:n:")) != -1) {
             switch (option) {
                 case 'p':
-                    port = atoi(argv[optind]);
+                    port = atoi(optarg);
                     break;
                 case 'e':
-                    TCS_port = atoi(argv[optind]);
+                    TCS_port = atoi(optarg);
                     break;
                 case 'n':
-                    strncpy(TCS_name, argv[optind], BUFFER_SIZE);
+                    strncpy(TCS_name, optarg, BUFFER_SIZE);
                     TCS_name[BUFFER_SIZE - 1] = '\0';
                     break;
             }
