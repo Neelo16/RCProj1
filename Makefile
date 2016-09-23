@@ -11,3 +11,8 @@ TCS/TCS:
 
 User/user:
 	(cd User && make)
+
+clean:
+	(cd TRS && make clean)
+	(cd TCS && make clean)
+	(cd User && make clean)

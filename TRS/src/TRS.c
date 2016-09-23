@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -45,5 +46,54 @@ int main(int argc, char *argv[])
     }
 
     printf("port: %u\nTCS port: %u\nTCS name: %s\n", port, TCS_port, TCS_name);
+
+    if (!register_language(port, TCS_name, TCS_port, language)) {
+        fprintf(stderr, "Failed to register language %s\n", language);
+        return EXIT_FAILURE;
+    }
+
     return EXIT_SUCCESS;
+}
+
+int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port, char const *language) {
+    int TCS_socket = socket(AF_INET, SOCK_DGRAM, 0);
+    struct sockaddr_in TCS_addr;
+    struct in_addr *TRS_addr;
+    struct hostent *TCS_ptr = NULL;
+    struct hostent *TRS_ptr = NULL;
+    unsigned addrlen = sizeof(TCS_addr);
+    char buffer[BUFFER_SIZE];
+    int result = 0;
+
+    gethostname(buffer, BUFFER_SIZE);
+    TRS_ptr = gethostbyname(buffer);
+
+    if ((TCS_ptr = gethostbyname(TCS_name)) == NULL || TRS_ptr == NULL) {
+        perror("Failed to connect to TCS");
+        return 0;
+    }
+    TRS_addr = (struct in_addr*) TRS_ptr->h_addr_list[0];
+
+    memset((void*)buffer, 0, sizeof(buffer));
+    sprintf(buffer, "SRG %s %s %u\n", language, inet_ntoa(*TRS_addr), TRS_port);
+
+    memset((void*)&TCS_addr, 0, sizeof(TCS_addr));
+    TCS_addr.sin_family = AF_INET;
+    TCS_addr.sin_addr.s_addr = ((struct in_addr*)(TCS_ptr->h_addr_list[0]))->s_addr;
+    TCS_addr.sin_port = htons((u_short) TCS_port);
+
+    sendto(TCS_socket, buffer, strlen(buffer), 0,
+           (struct sockaddr*)&TCS_addr, addrlen);
+
+    recvfrom(TCS_socket, buffer, sizeof(buffer), 0,
+            (struct sockaddr*)&TCS_addr, &addrlen);
+
+    if (!strcmp(buffer, "OK")) {
+        result = 1;
+    } else if(!strcmp(buffer, "NOK") || !strcmp(buffer, "NERR")) {
+        result = 0;
+    }
+
+    close(TCS_socket);
+    return result;
 }

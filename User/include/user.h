@@ -11,20 +11,35 @@
 #define BUFFSIZE 512
 #define CMDSIZE 128
 
-#define EXITCMD "exit"
-#define LISTCMD "list"
+#define EXITCMD "exit\n"
+#define LISTCMD "list\n"
+#define REQCMD  "request "
 
+#define WORDSIZE 20 /* Each words has WORDSIZE chars max */
 #define SENDULQ "ULQ"
 #define SENDULQSIZE strlen(SENDULQ)
 
 typedef struct UDPHandler{
 	struct sockaddr_in client;
 	char buffer[BUFFSIZE];
-	int socket,clientLen;
+	int socket;
+	unsigned int clientLen;
 } *UDPHandler_p;
+
+typedef struct TCPHandler{
+	struct sockaddr_in client,server;
+	char buffer[BUFFSIZE];
+	int clientFD;
+} *TCPHandler_p;
 
 void exitMsg(const char *msg);
 void list(UDPHandler_p TCSHandler);
+void request(UDPHandler_p TCSHandler, char *cmd);
 void clean(UDPHandler_p handler);
+void splitArgs(char *s, char **result);
+void printList(UDPHandler_p TCSHandler);
+
+int stringIn(const char *s1, const char *s2);
+int spaceNumber(const char *s1);
 
 #endif
