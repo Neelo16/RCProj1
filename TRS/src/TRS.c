@@ -23,6 +23,8 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+    language = argv[1];
+
     /* Loop over the command line arguments to set the appropriate options */
     {
         int option = -1;
