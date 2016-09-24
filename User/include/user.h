@@ -4,10 +4,6 @@
 #include <arpa/inet.h>
 #include <string.h>
 
-#define GROUPNUMBER 0
-#define DEFAULTPORT 50000+GROUPNUMBER
-#define DEFAULTADDR "127.0.0.1"
-
 #define BUFFSIZE 512
 #define CMDSIZE 128
 
@@ -15,9 +11,13 @@
 #define LISTCMD "list\n"
 #define REQCMD  "request "
 
-#define WORDSIZE 20 /* Each words has WORDSIZE chars max */
+#define GROUPNUMBER 0
+#define DEFAULTADDR "127.0.0.1"
+#define DEFAULTPORT 50000+GROUPNUMBER
+
 #define SENDULQ "ULQ"
 #define SENDULQSIZE strlen(SENDULQ)
+#define WORDSIZE 31 /* Each words has WORDSIZE-1 chars max */
 
 typedef struct UDPHandler{
 	struct sockaddr_in client;
@@ -27,19 +27,21 @@ typedef struct UDPHandler{
 } *UDPHandler_p;
 
 typedef struct TCPHandler{
-	struct sockaddr_in client,server;
+	struct sockaddr_in server; /* Server to connect to */
 	char buffer[BUFFSIZE];
-	int clientFD;
+	socklen_t serverSize;
+	char language[WORDSIZE]; /*Language that is being translated currently */
+	int clientFD,connected;
 } *TCPHandler_p;
 
 void exitMsg(const char *msg);
-void list(UDPHandler_p TCSHandler);
-void request(UDPHandler_p TCSHandler, char *cmd);
-void clean(UDPHandler_p handler);
-void splitArgs(char *s, char **result);
-void printList(UDPHandler_p TCSHandler);
+int getLanguages(UDPHandler_p TCSHandler, char ***languages);
+int list(UDPHandler_p TCSHandler, char ***languages);
+void request(UDPHandler_p TCSHandler, char *cmd, char **languages);
+void cleanUDP(UDPHandler_p handler);
+void cleanTCP(TCPHandler_p handler);
+void cleanLanguagesList(char **languages, int langNumber);
 
 int stringIn(const char *s1, const char *s2);
-int spaceNumber(const char *s1);
 
 #endif
