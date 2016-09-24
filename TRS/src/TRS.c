@@ -12,7 +12,7 @@
 int main(int argc, char *argv[])
 {
     const char *language = NULL;
-    unsigned port = 59000u;
+    unsigned TRS_port = 59000u;
     unsigned TCS_port = 58000 + GROUP_NUMBER;
     char TCS_name[BUFFER_SIZE];
     gethostname(TCS_name, BUFFER_SIZE);
@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
         while ((option = getopt(argc, argv, "p:e:n:")) != -1) {
             switch (option) {
                 case 'p':
-                    port = atoi(optarg);
+                    TRS_port = atoi(optarg);
                     break;
                 case 'e':
                     TCS_port = atoi(optarg);
@@ -45,9 +45,9 @@ int main(int argc, char *argv[])
         }
     }
 
-    printf("port: %u\nTCS port: %u\nTCS name: %s\n", port, TCS_port, TCS_name);
+    printf("TRS port: %u\nTCS port: %u\nTCS name: %s\n", TRS_port, TCS_port, TCS_name);
 
-    if (!register_language(port, TCS_name, TCS_port, language)) {
+    if (!register_language(TRS_port, TCS_name, TCS_port, language)) {
         fprintf(stderr, "Failed to register language %s\n", language);
         return EXIT_FAILURE;
     }
@@ -64,6 +64,8 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
     unsigned addrlen = sizeof(TCS_addr);
     char buffer[BUFFER_SIZE];
     int result = 0;
+    int bytes_sent = 0;
+    int bytes_received = 0;
 
     gethostname(buffer, BUFFER_SIZE);
     TRS_ptr = gethostbyname(buffer);
@@ -82,17 +84,25 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
     TCS_addr.sin_addr.s_addr = ((struct in_addr*)(TCS_ptr->h_addr_list[0]))->s_addr;
     TCS_addr.sin_port = htons((u_short) TCS_port);
 
-    sendto(TCS_socket, buffer, strlen(buffer), 0,
-           (struct sockaddr*)&TCS_addr, addrlen);
+    while (bytes_sent < strlen(buffer)) {
+        bytes_sent += sendto(TCS_socket, buffer + bytes_sent, strlen(buffer + bytes_sent), 0,
+                             (struct sockaddr*)&TCS_addr, addrlen);
+    }
 
-    recvfrom(TCS_socket, buffer, sizeof(buffer), 0,
-            (struct sockaddr*)&TCS_addr, &addrlen);
+    bytes_received = recvfrom(TCS_socket, buffer, sizeof(buffer), 0,
+                              (struct sockaddr*)&TCS_addr, &addrlen);
 
-    if (!strcmp(buffer, "OK")) {
+    buffer[bytes_received] = '\0';
+
+    if (!strcmp(buffer, "OK\n")) {
         result = 1;
-    } else if(!strcmp(buffer, "NOK") || !strcmp(buffer, "NERR")) {
+    } else if(!strcmp(buffer, "NOK\n") || !strcmp(buffer, "NERR\n")) {
         result = 0;
     }
+
+    puts("Start of buffer");
+    fputs(buffer, stdout);
+    puts("End of buffer");
 
     close(TCS_socket);
     return result;
