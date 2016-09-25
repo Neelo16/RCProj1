@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 
     printf("TRS port: %u\nTCS port: %u\nTCS name: %s\n", TRS_port, TCS_port, TCS_name);
 
-    if (!register_language(TRS_port, TCS_name, TCS_port, language)) {
+    if (!register_language(TRS_port, TCS_name, TCS_port, language, 0)) {
         fprintf(stderr, "Failed to register language %s\n", language);
         return EXIT_FAILURE;
     }
@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 }
 
-int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port, char const *language) {
+int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port, char const *language, int deregister) {
     int TCS_socket = socket(AF_INET, SOCK_DGRAM, 0);
     struct sockaddr_in TCS_addr;
     struct in_addr *TRS_addr;
@@ -78,7 +78,7 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
 
     /* Prepare the message we need to send to register the language */
     memset((void*)buffer, 0, sizeof(buffer));
-    sprintf(buffer, "SRG %s %s %u\n", language, inet_ntoa(*TRS_addr), TRS_port);
+    sprintf(buffer, "%s %s %s %u\n", deregister ? "SUN" : "SRG", language, inet_ntoa(*TRS_addr), TRS_port);
 
     memset((void*)&TCS_addr, 0, sizeof(TCS_addr));
     TCS_addr.sin_family = AF_INET;
@@ -97,9 +97,10 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
 
     buffer[bytes_received < BUFFER_SIZE ? bytes_received : BUFFER_SIZE - 1] = '\0';
 
-    if (!strcmp(buffer, "SRR OK\n")) {
+    /* FIXME I should probably change these conditionals to something else */
+    if (!strcmp(buffer, deregister ? "SUR OK\n" : "SRR OK\n")) {
         result = 1;
-    } else if(!strcmp(buffer, "SRR NOK\n") || !strcmp(buffer, "SRR NERR\n")) {
+    } else if(!strcmp(buffer, deregister ? "SUR NOK\n" : "SRR NOK\n") || !strcmp(buffer, deregister ? "SUR NERR" : "SRR NERR\n")) {
         result = 0;
     }
 
