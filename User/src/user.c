@@ -142,6 +142,8 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 	char **words;
 	char *part,c,*ip;
 	unsigned int port;
+	long int size = 0;
+	FILE *file;
 
 	part = strtok(cmd," ");
 	part = strtok(NULL," ");
@@ -158,6 +160,7 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 			return;
 		}
 		strcpy(filename,part);
+		*(filename+strlen(filename)-1) = '\0';
 		printf("Sending request of translation from %s to portuguese of this image: %s\n",languages[langName],filename);
 	}
 	else if(c == 't'){
@@ -228,7 +231,65 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 		puts("");
 	}
 	else if(c == 'f'){
-		printf("%s\n",filename);
+		file = fopen(filename,"rb");
+		if(!file){
+			printf("File %s does not exist\n",filename);
+			return;
+		}
+
+		fseek(file, 0L, SEEK_END);
+		received = sprintf(TRSHandler->buffer, "%s %c %s %ld ","TRQ",'f',filename,ftell(file));
+		printf("     %ld Bytes to transmit\n",ftell(file));
+		rewind(file);
+		write(TRSHandler->clientFD,TRSHandler->buffer,received);
+
+		i = 0;
+		while((c = getc(file)) != EOF){
+			*(TRSHandler->buffer+i) = c;
+			if(i == BUFFSIZE-1){
+				i = 0;
+				write(TRSHandler->clientFD,TRSHandler->buffer,BUFFSIZE);
+			}
+			else
+				i++;
+		}
+		if(i > 0)
+			write(TRSHandler->clientFD,TRSHandler->buffer,i);
+		fclose(file);
+
+		i = 0;
+		read(TRSHandler->clientFD,TRSHandler->buffer,6);
+		while(1){
+			read(TRSHandler->clientFD,&c,1);
+			if(c == ' ')
+				break;
+			*(filename+i) = c;
+			i++;
+		}
+		*(filename+i) = '\0';
+
+		file = fopen(filename,"wb");
+
+		i = 0;
+		while(1){
+			read(TRSHandler->clientFD,TRSHandler->buffer+i,1);
+			if((*(TRSHandler->buffer+i) = ' '))
+				break;
+			i++;
+		}
+		*(TRSHandler->buffer+i) = '\0';
+		size = atoi(TRSHandler->buffer);
+		if(file != NULL){
+			while(1){
+				received = read(TRSHandler->clientFD,TRSHandler->buffer,BUFFSIZE);
+				fputs(TRSHandler->buffer,file);
+				if(received < BUFFSIZE)
+					break;
+			}
+			fclose(file);
+		}
+		else
+			printf("Error trying to download this file: %s\n",filename);
 	}
 
 }
