@@ -97,9 +97,9 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
 
     buffer[bytes_received < BUFFER_SIZE ? bytes_received : BUFFER_SIZE - 1] = '\0';
 
-    if (!strcmp(buffer, "OK\n")) {
+    if (!strcmp(buffer, "SRR OK\n")) {
         result = 1;
-    } else if(!strcmp(buffer, "NOK\n") || !strcmp(buffer, "NERR\n")) {
+    } else if(!strcmp(buffer, "SRR NOK\n") || !strcmp(buffer, "SRR NERR\n")) {
         result = 0;
     }
 
