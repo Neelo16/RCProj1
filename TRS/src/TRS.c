@@ -76,6 +76,7 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
     }
     TRS_addr = (struct in_addr*) TRS_ptr->h_addr_list[0];
 
+    /* Prepare the message we need to send to register the language */
     memset((void*)buffer, 0, sizeof(buffer));
     sprintf(buffer, "SRG %s %s %u\n", language, inet_ntoa(*TRS_addr), TRS_port);
 
@@ -84,25 +85,23 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
     TCS_addr.sin_addr.s_addr = ((struct in_addr*)(TCS_ptr->h_addr_list[0]))->s_addr;
     TCS_addr.sin_port = htons((u_short) TCS_port);
 
+    /* Make sure we send the entire buffer and not just part of it */
     while (bytes_sent < strlen(buffer)) {
         bytes_sent += sendto(TCS_socket, buffer + bytes_sent, strlen(buffer + bytes_sent), 0,
                              (struct sockaddr*)&TCS_addr, addrlen);
     }
 
+    /* FIXME We need to maybe check if we received everything? */
     bytes_received = recvfrom(TCS_socket, buffer, sizeof(buffer), 0,
                               (struct sockaddr*)&TCS_addr, &addrlen);
 
-    buffer[bytes_received] = '\0';
+    buffer[bytes_received < BUFFER_SIZE ? bytes_received : BUFFER_SIZE - 1] = '\0';
 
     if (!strcmp(buffer, "OK\n")) {
         result = 1;
     } else if(!strcmp(buffer, "NOK\n") || !strcmp(buffer, "NERR\n")) {
         result = 0;
     }
-
-    puts("Start of buffer");
-    fputs(buffer, stdout);
-    puts("End of buffer");
 
     close(TCS_socket);
     return result;
