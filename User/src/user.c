@@ -107,6 +107,32 @@ int stringIn(const char *s1, const char *s2){
 	return 1;
 }
 
+int parseTCSUNR(UDPHandler_p TCSHandler, char **ip, unsigned int *port){
+	char *part;
+	part = strtok(TCSHandler->buffer, " ");
+	if(part == NULL || strcmp(part,"UNR")){
+		printf("Error. Received %s from TCS server\n",TCSHandler->buffer);
+		return 0;
+	}
+	part = strtok(NULL," ");
+	if(part == NULL){
+		printf("Didnt receive enough data from TCS: %s\n",TCSHandler->buffer);
+		return 0;
+	}
+	*ip = strtok(NULL," ");
+	if(*ip == NULL){
+		printf("Didnt receive enough data from TCS: %s\n",TCSHandler->buffer);
+		return 0;
+	}
+	part = strtok(NULL, " ");
+	if (part == NULL){
+		printf("Didnt receive enough data from TCS: %s\n",TCSHandler->buffer);
+		return 0;
+	}	
+	*port = atoi(part);
+	return 1;
+}
+
 void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **languages, int langNumber){
 	int i = 0,received = 0;
 	int langName,N=0;
@@ -157,32 +183,26 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 		*(TCSHandler->buffer+received) = '\0';
 		printf("TRS address: %s\n",TCSHandler->buffer);
 
-		part = strtok(TCSHandler->buffer, " ");
-		if(part == NULL || strcmp(part,"UNR")){
-			printf("Error. Received %s from TCS server\n",TCSHandler->buffer);
-			return;
-		}
-		part = strtok(NULL," ");
-		if(part == NULL){
-			printf("Didnt receive enough data from TCS: %s\n",TCSHandler->buffer);
-			return;
-		}
-		if(strcmp(part,languages[langName])){
-			printf("Error. You asked to translate %s but TCS sent you the %s TRS translator\n",languages[langName],part);
-			return;
-		}
-		ip = strtok(NULL," ");
-		if(ip == NULL){
-			printf("Didnt receive enough data from TCS: %s\n",TCSHandler->buffer);
-			return;
-		}
-		part = strtok(NULL, " ");
-		if (part == NULL){
-			printf("Didnt receive enough data from TCS: %s\n",TCSHandler->buffer);
-			return;
-		}			
-		port = atoi(part);
+		if(!parseTCSUNR(TCSHandler,&ip, &port)) return;
+
 		TCPConnection(TRSHandler, ip, port, languages[langName]);
+
+		received = sprintf(TRSHandler->buffer, "%s %c %d","TRQ",'t',N);
+		for(i = 0; i < N; i++)
+			received += sprintf(TRSHandler->buffer+received," %s",words[i]);
+		write(TRSHandler->clientFD,TRSHandler->buffer,received);
+		received = read(TRSHandler->clientFD,TRSHandler->buffer,BUFFSIZE-1);
+		*(TRSHandler->buffer+received) = '\0';
+		printf("%s\n",TRSHandler->buffer);
+		printf(" %s:",ip);
+		part = strtok(TRSHandler->buffer," ");
+		part = strtok(NULL," ");
+		for(i = 0; i < N; i++){
+			part = strtok(NULL," ");
+			printf(" %s",part);
+		}
+		puts("");
+
 		/* Free some resources */
 		for(i = 0; i < N; i++)
 			free(words[i]);
@@ -199,7 +219,7 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 void TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, const char *language){
 	/* Estabilishes a TCP connection with the TRS server */
 	struct hostent *addr;
-	printf("Estabilishing a TCP connection with %s:%d, the %s-portuguese translator\n",ip,port,language);
+	printf("%s %d\n",ip,port);
 	if(TRSHandler->connected)
 		close(TRSHandler->clientFD);
 	else
@@ -287,17 +307,11 @@ int main(int argc, char **argv){
 			if(langNumber)
 				cleanLanguagesList(languages,langNumber);
 			langNumber = list(TCSHandler,&languages);
-			/* Print languages */
-			puts("Languages available:");
-			for(int i = 0; i < langNumber; i++)
-				printf(" %d- %s\n",i+1,languages[i]);
 		}
 		else if(stringIn(cmd,REQCMD))
 			request(TCSHandler,TRSHandler,cmd,languages,langNumber);
-		else{
+		else
 			printf("Invalid command %s\n",cmd);
-			break;
-		}
 
 	}
 
