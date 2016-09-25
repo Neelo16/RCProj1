@@ -49,7 +49,9 @@ int isIPAddress(const char *ip){
 		if(points > 3) return 0;
 		i++;
 	}
-	return 1;
+	if(points == 2 || points == 3)
+		return 1;
+	return 0;
 }
 /* ----------------------- Functions for list cmd -------------------------- */
 int getLanguages(UDPHandler_p TCSHandler, char ***languages){
@@ -151,8 +153,12 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 	c = *part;
 	if(c == 'f'){
 		part = strtok(NULL, " ");
+		if(part == NULL){
+			printf("Not enough arguments for request\n");
+			return;
+		}
 		strcpy(filename,part);
-		printf("Sending request of translation from %s to portuguese of this image: %s\n",languages[langName-1],filename);
+		printf("Sending request of translation from %s to portuguese of this image: %s\n",languages[langName],filename);
 	}
 	else if(c == 't'){
 		if((part = strtok(NULL," ")) == NULL) {
@@ -160,6 +166,7 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 			return;
 		}
 		N = atoi(part);
+		printf(":)\n");
 		words = (char**)malloc(sizeof(char*)*N);
 		for(i = 0; i < N; i++){
 			words[i] = (char *) malloc(sizeof(char)*WORDSIZE);
@@ -169,48 +176,59 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 			}
 			strcpy(words[i],part);
 		}
+	}
+	else{
+		printf("Invalid request\n");
+		return;
+	}
 
-		/* Send UNQ + languageName */
-		received = sprintf(TCSHandler->buffer,"%s %d","UNQ",langName+1);
-		printf("Sending: %s to TCS\n",TCSHandler->buffer);
-	    if (sendto(TCSHandler->socket, TCSHandler->buffer, received , 0 , (struct sockaddr *) &TCSHandler->client, TCSHandler->clientLen) == -1)
-			exitMsg("Error sending message");
-		printf("Receiving message...\n");
-		
-		/* Receive UNR */
-		if ((received = recvfrom(TCSHandler->socket, TCSHandler->buffer, BUFFSIZE-1, 0, (struct sockaddr *) &TCSHandler->client, &TCSHandler->clientLen)) == -1)
-			exitMsg("Error receiving messages");
-		*(TCSHandler->buffer+received) = '\0';
-		printf("TRS address: %s\n",TCSHandler->buffer);
+	/* Send UNQ + languageName */
+	received = sprintf(TCSHandler->buffer,"%s %d","UNQ",langName+1);
+	printf("Sending: %s to TCS\n",TCSHandler->buffer);
+    if (sendto(TCSHandler->socket, TCSHandler->buffer, received , 0 , (struct sockaddr *) &TCSHandler->client, TCSHandler->clientLen) == -1)
+		exitMsg("Error sending message");
+	printf("Receiving message...\n");
+	
+	/* Receive UNR */
+	if ((received = recvfrom(TCSHandler->socket, TCSHandler->buffer, BUFFSIZE-1, 0, (struct sockaddr *) &TCSHandler->client, &TCSHandler->clientLen)) == -1)
+		exitMsg("Error receiving messages");
+	*(TCSHandler->buffer+received) = '\0';
+	printf("TRS address: %s\n",TCSHandler->buffer);
 
-		if(!parseTCSUNR(TCSHandler,&ip, &port)) return;
+	if(!parseTCSUNR(TCSHandler,&ip, &port)) return;
 
-		TCPConnection(TRSHandler, ip, port, languages[langName]);
+	TCPConnection(TRSHandler, ip, port, languages[langName]);
 
+	if(c == 't'){
 		received = sprintf(TRSHandler->buffer, "%s %c %d","TRQ",'t',N);
 		for(i = 0; i < N; i++)
 			received += sprintf(TRSHandler->buffer+received," %s",words[i]);
 		write(TRSHandler->clientFD,TRSHandler->buffer,received);
 		received = read(TRSHandler->clientFD,TRSHandler->buffer,BUFFSIZE-1);
 		*(TRSHandler->buffer+received) = '\0';
-		printf("%s\n",TRSHandler->buffer);
-		printf(" %s:",ip);
-		part = strtok(TRSHandler->buffer," ");
-		part = strtok(NULL," ");
-		for(i = 0; i < N; i++){
-			part = strtok(NULL," ");
-			printf(" %s",part);
-		}
-		puts("");
 
 		/* Free some resources */
 		for(i = 0; i < N; i++)
 			free(words[i]);
 		free(words);
+
+		printf("%s\n",TRSHandler->buffer);
+		printf(" %s:",ip);
+		part = strtok(TRSHandler->buffer," ");
+		part = strtok(NULL," ");
+		N = atoi(part);
+		for(i = 0; i < N; i++){
+			part = strtok(NULL," ");
+			if(part == NULL){
+				printf("TRS said he would send %d words but he only sent %d",N,i);
+				return;
+			}
+			printf(" %s",part);
 		}
-	else{
-		printf("Invalid request\n");
-		return;
+		puts("");
+	}
+	else if(c == 'f'){
+		printf("%s\n",filename);
 	}
 
 }
