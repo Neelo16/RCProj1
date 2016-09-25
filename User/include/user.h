@@ -34,14 +34,15 @@ typedef struct TCPHandler{
 	int clientFD,connected;
 } *TCPHandler_p;
 
-void exitMsg(const char *msg);
-int getLanguages(UDPHandler_p TCSHandler, char ***languages);
-int list(UDPHandler_p TCSHandler, char ***languages);
-void request(UDPHandler_p TCSHandler, char *cmd, char **languages);
+void cleanLanguagesList(char **languages, int langNumber);
 void cleanUDP(UDPHandler_p handler);
 void cleanTCP(TCPHandler_p handler);
-void cleanLanguagesList(char **languages, int langNumber);
-
+void TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, const char *language);
+void exitMsg(const char *msg);
+void request(UDPHandler_p TCSHandler, TCPHandler_p TRSHandler, char *cmd, char **languages, int langNumber);
+int list(UDPHandler_p TCSHandler, char ***languages);
+int getLanguages(UDPHandler_p TCSHandler, char ***languages);
 int stringIn(const char *s1, const char *s2);
+int isIPAddress(const char *ip);
 
 #endif
