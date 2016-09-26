@@ -27,6 +27,9 @@ struct trsList
 
 
 trs_item createTRS(char* language, char* hostname, unsigned int port);
+char* getLanguage(trs_item trs);
+char* getHostname(trs_item trs);
+int getPort(trs_item trs);
 void destroyTRS(trs_item trs);
 node_link createNode(trs_item trs);
 void destroyNode(node_link node);
@@ -36,5 +39,6 @@ void removeTRS(trs_list list, char* language);
 int sizeList(trs_list list);
 void destroyList(trs_list list);
 void showList(trs_list list);
-
+char* listLanguages(trs_list list);
+trs_item findTRS(trs_list list, char* language);
 #endif

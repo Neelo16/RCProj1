@@ -3,11 +3,13 @@
 #include <string.h>
 #include <stdio.h>
 
+#define MAX 200
+
 trs_item createTRS(char* language, char* hostname, unsigned int port)
 {
     trs_item trs = malloc(sizeof(struct trsItem));
     
-    trs->hostname = hostname;
+    trs->hostname = hostname; //nao devia ser ip?
     trs->port;
     if(strlen(language) <= 20)
         trs->language = language;
@@ -15,6 +17,21 @@ trs_item createTRS(char* language, char* hostname, unsigned int port)
         perror("language is too long");
     
     return trs;
+}
+
+int getPort(trs_item trs)
+{
+    return trs->port;
+}
+
+char* getLanguage(trs_item trs)
+{
+    return trs->language;
+} 
+
+char* getHostname(trs_item trs)
+{
+    return trs->hostname;
 }
 
 void destroyTRS(trs_item trs)
@@ -97,8 +114,21 @@ void removeTRS(trs_list list, char* language)
         perror("language not found");
     }   
 }
+//FIXME
+trs_item findTRS(trs_list list, char* language)
+{
+    node_link aux;
 
-void destroyList(trs_list list)
+    for(aux = list->head; aux != NULL; aux = aux->next)
+    {
+        if(!strcmp(aux->item->language, language))
+            return aux->item;
+    }
+
+    return NULL;
+}
+
+void destroylist(trs_list list)
 {
     node_link aux;
     aux = list->head;
@@ -114,6 +144,21 @@ int sizeList(trs_list list)
     return list->size;
 }
 
+char* listLanguages(trs_list list)
+{
+    node_link aux;
+    char* aux_r = malloc(sizeof(char)*MAX);
+    
+    aux_r = "ULR " + sizeList(list);
+    strcat(aux_r, " ");
+    for(aux = list->head; aux != NULL; aux = aux->next)
+    {
+        strcat(aux_r, aux->item->language);
+        strcat(aux_r, " ");    
+    }
+    return aux_r;
+}
+
 void showList(trs_list list)
 {
     node_link aux;
@@ -125,3 +170,5 @@ void showList(trs_list list)
     }
     printf("\n");
 }
+
+
