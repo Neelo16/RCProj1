@@ -165,7 +165,8 @@ void handle_requests(int TRS_port) {
                 num_words = atoi(argument);
                 while (num_words-- > 0) {
                     char translated_word[31];
-                    memset(translated_word, '\0', sizeof(translated_word));
+                    /* FIXME this memset is probably unnecessary */
+                    /* memset(translated_word, '\0', sizeof(translated_word)); */
                     argument = strtok(NULL, " ");
                     if (!get_text_translation(argument, translated_word)) {
                         strcpy(response, "TRR NTA");
