@@ -132,13 +132,28 @@ void handle_requests(int TRS_port) {
         struct sockaddr_in client_addr;
         int client_len = sizeof(client_addr);
         int client_socket = accept(TRS_socket, (struct sockaddr*)&client_addr, &client_len);
+        char buffer[BUFFER_SIZE];
+        int bytes_read = 0;
+        int bytes_written = 0;
+        char *argument = NULL;
+
+        memset(buffer, '\0', sizeof(buffer));
         
         if (client_socket == -1) {
             /* FIXME */
         }
 
-        /* TODO do things here */
+        bytes_read = read(client_socket, buffer, sizeof(buffer));
+        argument = strtok(buffer, " ");
+
+        if (!strcmp(argument, "TRQ")) {
+            /* TODO do stuff */
+        } else {
+            /* TODO do different stuff */
+        }
 
         close(client_socket);
     }
+
+    close(TRS_socket);
 }
