@@ -13,9 +13,9 @@
 
 #define GROUPNUMBER 0
 #define DEFAULTADDR "127.0.0.1"
-#define DEFAULTPORT 50000+GROUPNUMBER
+#define DEFAULTPORT 58000+GROUPNUMBER
 
-#define SENDULQ "ULQ"
+#define SENDULQ "ULQ\n"
 #define SENDULQSIZE strlen(SENDULQ)
 #define WORDSIZE 31 /* Each words has WORDSIZE-1 chars max */
 

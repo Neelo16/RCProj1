@@ -10,71 +10,73 @@
 #include "queue.h"
 
 #define PORT 58000
-#define MAX 100
+#define MAX 1024
 
 char* getBufferLanguage(char buffer[])
 {
-    char* language = malloc(sizeof(char)*20);
+    char* language;
 
-    language = strtok(buffer, " ");//ULQ
-    language = strtok(NULL, " ");//language
-    
-    //The request is not formulated correcly //FIXME
-    if( !strcmp(language, ""))
-    {
-        return "UNR ERR";
-    }
+    printf("Buffer: %s\n",buffer);
+    language = strtok(buffer, " ");/* ULQ */
+    language = strtok(NULL, " ");/* language */
+
+    /* The request is not formulated correcly if the user doesnt 
+    add any language or more than one */
+    if(language == NULL || strtok(NULL, " ") != NULL)
+        strcpy(language,"UNR ERR");
 
     return language;
 }
 
 char* getTRSInfo(trs_list list, char* language)
 {
-    trs_item trs = malloc(sizeof(struct trsItem));
-    char* repply, *aux;
+    trs_item trs = (trs_item) malloc(sizeof(struct trsItem));
+    char* repply = (char*) malloc(sizeof(char)*128);
+
+    int repplyLen = 0;
 
     trs = findTRS(list, language);
-    
-    //the language doesnt exist in the server_list
+    printf("%s\n",language);
+    /* the language doesnt exist in the server_list */
     if( trs == NULL)
     {
-        return "UNR EOF";
+        strcpy(repply, "UNR EOF\n");
+        return repply;
     }
-    
-    repply = strcat(repply, "UNR ");
 
-    repply = strcat(repply, getHostname(trs));
-    
-    sprintf(aux, "%d", getPort(trs));
-    repply = strcat( repply, aux);
+    repplyLen = sprintf(repply, "UNR ");
+    repplyLen = sprintf(repply+repplyLen,"%s %d\n",getIp(trs),getPort(trs));
     
     return repply;
     
 }
 
-int main(int argc, const char *argv[])  {
+int main(int argc, const char **argv)  {
 
-    int user, trs; //sockets
-    struct hostent *hostptr;
+    int user=0; /* trs; sockets */
+    /*struct hostent *hostptr;*/
     struct sockaddr_in serveraddr, clientaddr;
-    int addrlen;
+    unsigned int addrlen;
     int port;
     char buffer[MAX];
-	char* repply = malloc(sizeof(char)*MAX);
-    char* language = malloc(sizeof(char)*MAX);
+	char* repply = (char *) malloc(sizeof(char)*MAX);
+    char* language = (char *) malloc(sizeof(char)*MAX);
+    int received = 0;
 
+	/* Create Server List */
+	trs_list server_list = createList(); 
+    addTRSItem(server_list, createTRS("Portugues", "13245", 59000));
+    addTRSItem(server_list, createTRS("Coreano", "13242", 59020));
 
-	//Create Server List
-	trs_list server_list = createList();
-
-    // Port assignment 
-    if( sizeof(argv) > 1)
+    /*  Port assignment */
+    if( argc > 1)
     {
-        port = atoi(argv[2]);
-    }else //in case -p TCSport is omitted
+        port = atoi(argv[1]);
+    }else /* in case -p TCSport is omitted */
     {
         port = PORT;
     }
+
 
     /* USER */
     
@@ -83,52 +85,61 @@ int main(int argc, const char *argv[])  {
     memset((void*)&serveraddr, (int)'\0',sizeof(serveraddr));
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    serveraddr.sin_port = htons((u_short)port);
+    serveraddr.sin_port = htons(port);
     
     bind(user, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
     addrlen = sizeof(clientaddr);
-    
- 
-    recvfrom(user, buffer,sizeof(buffer), 0, (struct sockaddr*)&clientaddr, &addrlen);
 
-    if(!strncmp(buffer, "ULQ", 3))
+    while(1)
     {
-        if(server_list->size == 0)
+        received = recvfrom(user, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientaddr, &addrlen);
+        *(buffer + received) = '\0';
+        printf("%s\n",buffer);
+        if(!strncmp(buffer, "ULQ", 3))
         {
-            repply = "ULR EOF\n";
-            sendto(user, repply, sizeof(buffer), 0, NULL, 0);
+            if(strlen(buffer) > 4)
+            {
+                strcpy(repply,"URR\n\0");
+                sendto(user, repply, 4, 0, (struct sockaddr*) &clientaddr, addrlen);
+            }
+            else if(server_list->size == 0)
+            {
+                strcpy(repply,"ULR EOF\n");
+                sendto(user, repply, 8, 0, (struct sockaddr*) &clientaddr, addrlen);
+            }
+            else
+            {
+                repply = listLanguages(server_list);
+                sendto(user, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);
+            }
         }
-       //URR ??
-        else
+        else if(!strncmp(buffer,"UNQ",3))
         {
-            repply = listLanguages(server_list);
-            sendto(user, repply, sizeof(repply), 0, NULL, 0);
+            printf("Oh\n");
+            /* gets language requested from the user */
+            language = getBufferLanguage(buffer); 
+            
+            /* looks for the language in trs list and returs its info */
+            repply = getTRSInfo( server_list, language);
+            sendto(user, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);
+            
         }
-    }
-    else if(!strncmp(buffer,"UNQ",3))
-    {
-        //gets language requested from the user
-        language = getBufferLanguage(buffer); 
+
+        /* TRS 
+
+        trs = socket(AF_INET, SOCK_DGRAM, 0);
+
+        memset((void*)&serveraddr, (int)'\0', sizeof(serveraddr));
+        serveraddr.sin_family = AF_INET;
+        serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+        serveraddr.sin_port = htons((u_short)port);
         
-        //looks for the language in trs list and returs its info
-        repply = getTRSInfo( server_list, language);
-        sendto(user, repply, sizeof(repply), 0, NULL, 0);
-        
+        bind(trs, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
+        addrlen = sizeof(clientaddr);
+        */  
     }
-
-    /* TRS
-
-    trs = socket(AF_INET, SOCK_DGRAM, 0);
-
-    memset((void*)&serveraddr, (int)'\0', sizeof(serveraddr));
-    serveraddr.sin_family = AF_INET;
-    serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    serveraddr.sin_port = htons((u_short)port);
     
-    bind(trs, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
-    addrlen = sizeof(clientaddr);
-    */
 
-
+    return 0;
 
 }     

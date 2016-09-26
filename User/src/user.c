@@ -186,7 +186,7 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 	}
 
 	/* Send UNQ + languageName */
-	received = sprintf(TCSHandler->buffer,"%s %d","UNQ",langName+1);
+	received = sprintf(TCSHandler->buffer,"%s %s","UNQ",languages[langName]);
 	printf("Sending: %s to TCS\n",TCSHandler->buffer);
     if (sendto(TCSHandler->socket, TCSHandler->buffer, received , 0 , (struct sockaddr *) &TCSHandler->client, TCSHandler->clientLen) == -1)
 		exitMsg("Error sending message");

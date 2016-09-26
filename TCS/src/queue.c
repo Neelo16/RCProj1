@@ -3,18 +3,22 @@
 #include <string.h>
 #include <stdio.h>
 
-#define MAX 200
+#define MAX 2048
 
-trs_item createTRS(char* language, char* hostname, unsigned int port)
+trs_item createTRS(const char *language, const char *ip, unsigned int port)
 {
-    trs_item trs = malloc(sizeof(struct trsItem));
+    trs_item trs = (trs_item) malloc(sizeof(struct trsItem));
     
-    trs->hostname = hostname; //nao devia ser ip?
-    trs->port;
-    if(strlen(language) <= 20)
-        trs->language = language;
+    trs->port = port;
+    if(strlen(language) <= 20 && strlen(ip) <= 20)
+    {
+        trs->language = (char *) malloc(sizeof(char)*21);
+        trs->ip = (char *) malloc(sizeof(char)*21);
+        strcpy(trs->ip,ip);
+        strcpy(trs->language,language);
+    }
     else
-        perror("language is too long");
+        perror("language or ip are too long");
     
     return trs;
 }
@@ -29,9 +33,9 @@ char* getLanguage(trs_item trs)
     return trs->language;
 } 
 
-char* getHostname(trs_item trs)
+char* getIp(trs_item trs)
 {
-    return trs->hostname;
+    return trs->ip;
 }
 
 void destroyTRS(trs_item trs)
@@ -41,7 +45,7 @@ void destroyTRS(trs_item trs)
 
 node_link createNode(trs_item trs)
 {
-    node_link node = malloc(sizeof(struct q_node ));
+    node_link node = (node_link) malloc(sizeof(struct q_node ));
 
     node->item = trs;
     node->next = NULL;
@@ -57,15 +61,14 @@ void destroyNode(node_link node)
 
 trs_list createList()
 {
-    trs_list list = malloc(sizeof(struct trsList));
+    trs_list list = (trs_list) malloc(sizeof(struct trsList));
 
     list->head = NULL;
     list->size = 0;
 
     return list;
 }
-
-void addTRS(trs_list list, trs_item trs)
+void addTRSItem(trs_list list, trs_item trs)
 {
     node_link aux;
     node_link node = createNode(trs);
@@ -86,7 +89,6 @@ void addTRS(trs_list list, trs_item trs)
 void removeTRS(trs_list list, char* language)
 {
     node_link aux, aux2;
-    trs_item trs_aux;
     
     if(list->head->item->language == language)
     {
@@ -114,7 +116,7 @@ void removeTRS(trs_list list, char* language)
         perror("language not found");
     }   
 }
-//FIXME
+/* FIXME */
 trs_item findTRS(trs_list list, char* language)
 {
     node_link aux;
@@ -147,15 +149,17 @@ int sizeList(trs_list list)
 char* listLanguages(trs_list list)
 {
     node_link aux;
-    char* aux_r = malloc(sizeof(char)*MAX);
+    char* aux_r = (char*) malloc(sizeof(char)*MAX);
+    int auxRLen;
+
+    auxRLen = sprintf(aux_r, "%s %d", "ULR", sizeList(list));
     
-    aux_r = "ULR " + sizeList(list);
-    strcat(aux_r, " ");
     for(aux = list->head; aux != NULL; aux = aux->next)
     {
-        strcat(aux_r, aux->item->language);
-        strcat(aux_r, " ");    
+        auxRLen += sprintf(aux_r+auxRLen," %s",aux->item->language);
     }
+    *(aux_r+auxRLen) = '\0';
+    printf("%s\n",aux_r);
     return aux_r;
 }
 

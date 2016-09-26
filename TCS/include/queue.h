@@ -8,7 +8,7 @@ typedef struct trsList* trs_list;
 struct trsItem
 {
     char* language;
-    char* hostname;
+    char* ip;
     unsigned int port;
 };
 
@@ -26,15 +26,15 @@ struct trsList
 };
 
 
-trs_item createTRS(char* language, char* hostname, unsigned int port);
+trs_item createTRS(const char* language, const char* ip, unsigned int port);
 char* getLanguage(trs_item trs);
-char* getHostname(trs_item trs);
+char* getIp(trs_item trs);
 int getPort(trs_item trs);
 void destroyTRS(trs_item trs);
 node_link createNode(trs_item trs);
 void destroyNode(node_link node);
 trs_list createList();
-void addTRS(trs_list list, trs_item trs);
+void addTRSItem(trs_list list, trs_item trs);
 void removeTRS(trs_list list, char* language);
 int sizeList(trs_list list);
 void destroyList(trs_list list);
