@@ -146,7 +146,7 @@ void handle_requests(int TRS_port) {
             /* FIXME */
         }
 
-        /* FIXME need to check if we received anything */
+        /* FIXME need to check if we received everything */
         bytes_read = read(client_socket, buffer, sizeof(buffer));
         if (buffer[bytes_read - 1] == '\n') {
             buffer[bytes_read - 1] = '\0';
