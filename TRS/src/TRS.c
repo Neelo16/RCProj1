@@ -52,6 +52,8 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+    handle_requests(TRS_port);
+
     return EXIT_SUCCESS;
 }
 
