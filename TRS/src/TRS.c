@@ -107,3 +107,38 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
     close(TCS_socket);
     return result;
 }
+
+void handle_requests(int TRS_port) {
+    int TRS_socket = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in TRS_addr;
+    int running = 1;
+
+    memset((void*)&TRS_addr, '\0', sizeof(TRS_addr));
+    TRS_addr.sin_family = AF_INET;
+    TRS_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    TRS_addr.sin_port = htons((u_short) TRS_port);
+
+    if (bind(TRS_socket, (struct sockaddr*)&TRS_addr, sizeof(TRS_addr)) == -1) {
+        perror("Failed to bind address");
+        return;
+    }
+
+    if (listen(TRS_socket, 5) == -1) {
+        perror("Error in listen");
+        return;
+    }
+
+    while (running) {
+        struct sockaddr_in client_addr;
+        int client_len = sizeof(client_addr);
+        int client_socket = accept(TRS_socket, (struct sockaddr*)&client_addr, &client_len);
+        
+        if (client_socket == -1) {
+            /* FIXME */
+        }
+
+        /* TODO do things here */
+
+        close(client_socket);
+    }
+}
