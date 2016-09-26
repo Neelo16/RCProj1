@@ -147,7 +147,14 @@ void handle_requests(int TRS_port) {
         argument = strtok(buffer, " ");
 
         if (!strcmp(argument, "TRQ")) {
-            /* TODO do stuff */
+            argument = strokt(NULL, " ");
+            if (!strcmp(argument, "t")) {
+                /* TODO handle text translation */
+            } else if (!strcmp(argument, "f")) {
+                /* TODO handle file translation */
+            } else {
+                /* TODO tell the client they're bad and should feel bad */
+            }
         } else {
             /* TODO do different stuff */
         }
