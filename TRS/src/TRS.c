@@ -131,8 +131,9 @@ void handle_requests(int TRS_port) {
     }
 
     while (running) {
+        running = 0;
         struct sockaddr_in client_addr;
-        int client_len = sizeof(client_addr);
+        unsigned client_len;
         int client_socket = accept(TRS_socket, (struct sockaddr*)&client_addr, &client_len);
         char buffer[BUFFER_SIZE];
         int bytes_read = 0;
@@ -145,13 +146,38 @@ void handle_requests(int TRS_port) {
             /* FIXME */
         }
 
+        /* FIXME need to check if we received anything */
         bytes_read = read(client_socket, buffer, sizeof(buffer));
+        if (buffer[bytes_read - 1] == '\n') {
+            buffer[bytes_read - 1] = '\0';
+        }
         argument = strtok(buffer, " ");
 
         if (!strcmp(argument, "TRQ")) {
             argument = strtok(NULL, " ");
             if (!strcmp(argument, "t")) {
-                /* TODO handle text translation */
+                /* FIXME correctly format this response with number of words to send */ 
+                char response[512] = "TRR";
+                int response_len = 0;
+                int num_words = 0;
+                bytes_written = 0;
+                argument = strtok(NULL, " ");
+                num_words = atoi(argument);
+                while (num_words-- > 0) {
+                    char translated_word[31];
+                    memset(translated_word, '\0', sizeof(translated_word));
+                    argument = strtok(NULL, " ");
+                    if (!get_text_translation(argument, translated_word)) {
+                        strcpy(response, "TRR NTA");
+                        break;
+                    }
+                    strcat(response, " ");
+                    strcat(response, translated_word);
+                }
+                strcat(response, "\n");
+                response_len = strlen(response);
+                while ((bytes_written += write(client_socket, response, response_len)) < response_len)
+                    ;
             } else if (!strcmp(argument, "f")) {
                 /* TODO handle file translation */
             } else {
