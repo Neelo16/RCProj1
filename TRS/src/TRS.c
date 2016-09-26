@@ -147,7 +147,7 @@ void handle_requests(int TRS_port) {
         argument = strtok(buffer, " ");
 
         if (!strcmp(argument, "TRQ")) {
-            argument = strokt(NULL, " ");
+            argument = strtok(NULL, " ");
             if (!strcmp(argument, "t")) {
                 /* TODO handle text translation */
             } else if (!strcmp(argument, "f")) {
