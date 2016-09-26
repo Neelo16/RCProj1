@@ -1,7 +1,7 @@
 #ifndef __RC_2016_TRC__
 #define __RC_2016_TRC__
 
-#define BUFFER_SIZE 128
+#define BUFFER_SIZE 2048
 #define GROUP_NUMBER 0
 
 /* Register the server's language in the TCS. Returns 0 on failure, and a nonzero value otherwise  */
