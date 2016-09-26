@@ -17,11 +17,6 @@ void cleanUDP(UDPHandler_p handler){
 	close(handler->socket);
 	free(handler);
 }
-void cleanTCP(TCPHandler_p handler){
-	if(handler->connected)
-		close(handler->clientFD);
-	free(handler);
-}
 
 void cleanLanguagesList(char **languages,int langNumber){
 	int i;
@@ -143,6 +138,7 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 	char *part,c,*ip;
 	unsigned int port;
 	long int size = 0;
+	int good = 0;
 	FILE *file;
 
 	part = strtok(cmd," ");
@@ -184,23 +180,34 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 		printf("Invalid request\n");
 		return;
 	}
-
-	/* Send UNQ + languageName */
-	received = sprintf(TCSHandler->buffer,"%s %s","UNQ",languages[langName]);
-	printf("Sending: %s to TCS\n",TCSHandler->buffer);
-    if (sendto(TCSHandler->socket, TCSHandler->buffer, received , 0 , (struct sockaddr *) &TCSHandler->client, TCSHandler->clientLen) == -1)
-		exitMsg("Error sending message");
-	printf("Receiving message...\n");
 	
-	/* Receive UNR */
-	if ((received = recvfrom(TCSHandler->socket, TCSHandler->buffer, BUFFSIZE-1, 0, (struct sockaddr *) &TCSHandler->client, &TCSHandler->clientLen)) == -1)
-		exitMsg("Error receiving messages");
-	*(TCSHandler->buffer+received) = '\0';
-	printf("TRS address: %s\n",TCSHandler->buffer);
+	while(!good){
 
-	if(!parseTCSUNR(TCSHandler,&ip, &port)) return;
+		if(strcmp(TRSHandler->language,languages[langName])){
+			/* Send UNQ + languageName */
+			received = sprintf(TCSHandler->buffer,"%s %s","UNQ",languages[langName]);
+			printf("Sending: %s to TCS\n",TCSHandler->buffer);
+		    if (sendto(TCSHandler->socket, TCSHandler->buffer, received , 0 , (struct sockaddr *) &TCSHandler->client, TCSHandler->clientLen) == -1)
+				exitMsg("Error sending message");
+			printf("Receiving message...\n");
 
-	TCPConnection(TRSHandler, ip, port, languages[langName]);
+			/* Receive UNR */
+			if ((received = recvfrom(TCSHandler->socket, TCSHandler->buffer, BUFFSIZE-1, 0, (struct sockaddr *) &TCSHandler->client, &TCSHandler->clientLen)) == -1)
+				exitMsg("Error receiving messages");
+			*(TCSHandler->buffer+received) = '\0';
+			printf("TRS address: %s\n",TCSHandler->buffer);
+
+			if(!parseTCSUNR(TCSHandler,&ip, &port)) return;
+			good = TCPConnection(TRSHandler, ip, port, languages[langName]);
+		}
+		else{
+			good = !connect(TRSHandler->clientFD, (struct sockaddr *) &TRSHandler->server, TRSHandler->serverSize);
+			if(!good)
+				memset(TRSHandler->language,0,strlen(TRSHandler->language));
+		}
+
+
+	}
 
 	if(c == 't'){
 		received = sprintf(TRSHandler->buffer, "%s %c %d","TRQ",'t',N);
@@ -269,41 +276,41 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 		*(filename+i) = '\0';
 
 		file = fopen(filename,"wb");
-
 		i = 0;
 		while(1){
-			read(TRSHandler->clientFD,TRSHandler->buffer+i,1);
+			i += read(TRSHandler->clientFD,TRSHandler->buffer+i,1);
+			printf("%c",*TRSHandler->buffer+i);
 			if((*(TRSHandler->buffer+i) = ' '))
 				break;
-			i++;
 		}
-		*(TRSHandler->buffer+i) = '\0';
+		printf(":)%s\n",TRSHandler->buffer);
+		*(TRSHandler->buffer+i+1) = '\0';
+		printf(":(%s\n",TRSHandler->buffer);
 		size = atoi(TRSHandler->buffer);
 		if(file != NULL){
 			while(1){
-				received = read(TRSHandler->clientFD,TRSHandler->buffer,BUFFSIZE);
+				received += read(TRSHandler->clientFD,TRSHandler->buffer,BUFFSIZE);
+				*(TRSHandler->buffer+received) = '\0';
 				fputs(TRSHandler->buffer,file);
 				if(received < BUFFSIZE)
 					break;
 			}
 			fclose(file);
+			printf("received file %s\n     %ld Bytes\n",filename,size);
 		}
 		else
 			printf("Error trying to download this file: %s\n",filename);
 	}
+	if(TRSHandler->clientFD)
+		close(TRSHandler->clientFD);
 
 }
 /* -------------------------------------------------------------------------------------------- */
 
-void TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, const char *language){
+int TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, const char *language){
 	/* Estabilishes a TCP connection with the TRS server */
 	struct hostent *addr;
 	printf("%s %d\n",ip,port);
-	if(TRSHandler->connected)
-		close(TRSHandler->clientFD);
-	else
-		TRSHandler->connected = 1;
-
 
 	if ((TRSHandler->clientFD = socket(AF_INET, SOCK_STREAM,0)) == -1)
 		exitMsg("Error creating TCP socket");
@@ -323,7 +330,9 @@ void TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, cons
 	memset(TRSHandler->server.sin_zero, '\0', sizeof TRSHandler->server.sin_zero);
 
 	strcpy(TRSHandler->language,language);
-	connect(TRSHandler->clientFD, (struct sockaddr *) &TRSHandler->server, TRSHandler->serverSize);
+	if(connect(TRSHandler->clientFD, (struct sockaddr *) &TRSHandler->server, TRSHandler->serverSize))
+		return 0;
+	return 1;
 }
 
 int main(int argc, char **argv){
@@ -338,7 +347,6 @@ int main(int argc, char **argv){
 
 	/* Create TCP socket co communicate with the TRS's */
 	TRSHandler = (TCPHandler_p) malloc(sizeof(struct TCPHandler));
-	TRSHandler->connected = 0;
 	
 	/* Create UDP socket to communicate with TCS */
 	TCSHandler = (UDPHandler_p) malloc(sizeof(struct UDPHandler));
@@ -398,6 +406,6 @@ int main(int argc, char **argv){
 	if(langNumber)
 		cleanLanguagesList(languages,langNumber);
     cleanUDP(TCSHandler);
-    cleanTCP(TRSHandler);
+    free(TRSHandler);
 	return 0;
 }

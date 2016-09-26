@@ -31,13 +31,13 @@ typedef struct TCPHandler{
 	char buffer[BUFFSIZE];
 	socklen_t serverSize;
 	char language[WORDSIZE]; /*Language that is being translated currently */
-	int clientFD,connected;
+	int clientFD;
 } *TCPHandler_p;
 
 void cleanLanguagesList(char **languages, int langNumber);
 void cleanUDP(UDPHandler_p handler);
 void cleanTCP(TCPHandler_p handler);
-void TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, const char *language);
+int TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, const char *language);
 void exitMsg(const char *msg);
 void request(UDPHandler_p TCSHandler, TCPHandler_p TRSHandler, char *cmd, char **languages, int langNumber);
 int list(UDPHandler_p TCSHandler, char ***languages);
