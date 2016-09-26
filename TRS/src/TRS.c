@@ -192,3 +192,19 @@ void handle_requests(int TRS_port) {
 
     close(TRS_socket);
 }
+
+int get_text_translation(char const *untranslated, char *translated) {
+    FILE *translation_file = fopen("text_translation.txt", "r");
+    char buffer[32];
+    int got_translation = 0;
+    memset((void*)buffer, '\0', sizeof(buffer));
+    while (ftell(translation_file) != SEEK_END ) {
+        fscanf(translation_file, "%s %s\n", buffer, translated);
+        if (!strcmp(buffer, untranslated)) {
+            got_translation = 1;
+            break;
+        }
+    }
+    fclose(translation_file);
+    return got_translation;
+}
