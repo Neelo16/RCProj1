@@ -75,6 +75,9 @@ int list(UDPHandler_p TCSHandler, char ***languages){
 		return 0; /* FIXME */
 	langNumber = getLanguages(TCSHandler,languages);
 
+	if(!langNumber)
+		printf("No languages available\n");
+
 	/* Print languages */
 	for(i = 0; i < langNumber; i++)
 		printf(" %d- %s\n",i+1,(*languages)[i]);
