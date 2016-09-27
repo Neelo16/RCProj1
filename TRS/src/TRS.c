@@ -215,8 +215,8 @@ void handle_requests(int TRS_port) {
     close(TRS_socket);
 }
 
-int get_text_translation(char const *untranslated, char *translated) {
-    FILE *translation_file = fopen("text_translation.txt", "r");
+int get_translation(char const *untranslated, char *translated, char const *filename) {
+    FILE *translation_file = fopen(filename, "r");
     char buffer[32];
     int got_translation = 0;
     memset((void*)buffer, '\0', sizeof(buffer));
@@ -229,4 +229,24 @@ int get_text_translation(char const *untranslated, char *translated) {
     }
     fclose(translation_file);
     return got_translation;
+} 
+
+char *get_image_translation(char const *filename, char *new_filename, size_t *new_file_size) {
+    FILE *translated_file = NULL;
+    char *new_file_data = NULL;
+    if (!get_translation(filename, new_filename, "file_translation.txt")) {
+        return NULL;
+    }
+    translated_file = fopen(new_filename, "r");
+    *new_file_size = fseek(translated_file, 0, SEEK_END);
+    new_file_data = malloc(*new_file_size);
+    fseek(translated_file, 0, SEEK_SET);
+    fread(new_file_data, 1, *new_file_size, translated_file);
+    fclose(translated_file);
+    return new_file_data;
 }
+
+int get_text_translation(char const *untranslated, char *translated) {
+    return get_translation(untranslated, translated, "text_translation.txt");
+}
+
