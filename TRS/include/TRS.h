@@ -20,6 +20,6 @@ char *get_image_translation(char const *filename, char *new_filename, size_t *ne
 
 /* Get translation for the word contained in untranslated, and place the result in translated. */
 /*  */
-int get_translation(char const *untranslated, char *translated, char *filename);
+int get_translation(char const *untranslated, char *translated, char const *filename);
 
 #endif
