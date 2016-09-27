@@ -99,6 +99,7 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
     bytes_received = recvfrom(TCS_socket, buffer, sizeof(buffer), 0,
                               (struct sockaddr*)&TCS_addr, &addrlen);
 
+    /* FIXME change this filthy hack */
     buffer[bytes_received < BUFFER_SIZE ? bytes_received : BUFFER_SIZE - 1] = '\0';
 
     /* FIXME I should probably change these conditionals to something else */
