@@ -184,7 +184,24 @@ void handle_requests(int TRS_port) {
                     bytes_written += write(client_socket, response, response_len);
                 }
             } else if (!strcmp(argument, "f")) {
-                /* TODO handle file translation */
+                /* FIXME do we even need to do anything with the data? we don't use it for anything */
+                char *filename = strtok(NULL, " ");
+                char new_filename[BUFFER_SIZE];
+                size_t new_file_size = 0;
+                char *new_file = get_image_translation(filename, new_filename, &new_file_size);
+                if (new_file == NULL) {
+                    char const *response = "TRR NTA\n";
+                    write(client_socket, response, strlen(response));
+                }
+                else {
+                    char response[BUFFER_SIZE];
+                    size_t response_size = sprintf(response, "SRR %s %lu ", new_filename, new_file_size);
+                    /* FIXME check if we send everything */
+                    write(client_socket, response, response_size);
+                    write(client_socket, new_file, new_file_size);
+                    write(client_socket, "\n", 1);
+                    free(new_file);
+                }
             } else {
                 /* TODO tell the client they're bad and should feel bad */
             }
