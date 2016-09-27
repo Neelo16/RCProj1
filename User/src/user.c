@@ -25,6 +25,17 @@ void cleanLanguagesList(char **languages,int langNumber){
 	free(languages);
 }
 
+void safeSendUDP(UDPHandler_p TCSHandler, char *toSend, unsigned int toSendLen){
+	int received;
+	printf("Sending message...\n");
+	if (sendto(TCSHandler->socket, toSend, toSendLen , 0 , (struct sockaddr *) &TCSHandler->client, TCSHandler->clientLen) == -1)
+		exitMsg("Error sending message");
+	printf("Receiving message...\n");
+	if ((received = recvfrom(TCSHandler->socket, TCSHandler->buffer, BUFFSIZE-1, 0, (struct sockaddr *) &TCSHandler->client, &TCSHandler->clientLen)) == -1)
+		exitMsg("Error receiving messages");
+	*(TCSHandler->buffer+received) = '\0';
+}
+
 int isIPAddress(const char *ip){
 	int nums = 0,points = 0, i = 0;
 	while (*(ip+i) != '\0'){
@@ -265,9 +276,9 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 		fclose(file);
 
 		i = 0;
-		read(TRSHandler->clientFD,TRSHandler->buffer,6);
+		read(TRSHandler->clientFD,TRSHandler->buffer,6);/*TRR f*/
 		while(1){
-			read(TRSHandler->clientFD,&c,1);
+			read(TRSHandler->clientFD,&c,1);/*filename */
 			if(c == ' ')
 				break;
 			*(filename+i) = c;
@@ -278,18 +289,15 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 		file = fopen(filename,"wb");
 		i = 0;
 		while(1){
-			i += read(TRSHandler->clientFD,TRSHandler->buffer+i,1);
-			printf("%c",*TRSHandler->buffer+i);
-			if((*(TRSHandler->buffer+i) = ' '))
+			i += read(TRSHandler->clientFD,TRSHandler->buffer+i,1); /*size */
+			if(*(TRSHandler->buffer+i) == ' ')
 				break;
 		}
-		printf(":)%s\n",TRSHandler->buffer);
 		*(TRSHandler->buffer+i+1) = '\0';
-		printf(":(%s\n",TRSHandler->buffer);
 		size = atoi(TRSHandler->buffer);
 		if(file != NULL){
 			while(1){
-				received += read(TRSHandler->clientFD,TRSHandler->buffer,BUFFSIZE);
+				received = read(TRSHandler->clientFD,TRSHandler->buffer,BUFFSIZE);
 				*(TRSHandler->buffer+received) = '\0';
 				fputs(TRSHandler->buffer,file);
 				if(received < BUFFSIZE)
