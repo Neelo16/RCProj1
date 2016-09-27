@@ -26,15 +26,15 @@ char* getBufferLanguage(char buffer[])
     }
     /* The format is not formulated correcly if the user
      * doesnt add any language or adds more than one.*/
-    if((aux == 0 || aux > 1)&& language == "UNQ")
-        return "UNR ERR\n";
-    else if( aux == 3 && language == "SRG")
+    if((aux == 0 || aux > 1)&& !strcmp(language, "UNQ"))
+        return "UNR ERR";
+    else if( aux == 3 && !strcmp(language,"SRG"))
     {
-        return "SRR ERR\n"; 
+        return "SRR ERR"; 
     }
-    else if( aux == 3 && language == "SUN")
+    else if( aux == 3 && !strcmp(language,"SUN"))
     {
-        return "SUR ERR\n";
+        return "SUR ERR";
     }
     else
     {
@@ -56,7 +56,7 @@ char* getTRSInfo(trs_list list, char* language)
     /* the language doesnt exist in the server_list */
     if( trs == NULL)
     {
-        strcpy(repply, "UNR EOF\n");
+        strcpy(repply, "UNR EOF");
         return repply;
     }
 
@@ -69,11 +69,11 @@ char* getTRSInfo(trs_list list, char* language)
 
 char* checkTRS(trs_list list, char buffer[])
 {
-    char* status;
+    char* status = (char*)malloc(sizeof(char)*MAX);
     char* language;
     char* ip;
     char* port;
-    int i, aux = 0;
+    
     trs_item trs = (trs_item) malloc(sizeof(struct trsItem));
 
     language = getBufferLanguage(buffer);
@@ -85,7 +85,7 @@ char* checkTRS(trs_list list, char buffer[])
     {
         /* checks if the trs is already in the server_list*/
         trs = findTRS(list, language);
-        
+
         /* if not it adds to the list and sends status OK*/
         if(trs == NULL)
         {
@@ -96,7 +96,7 @@ char* checkTRS(trs_list list, char buffer[])
            
             addTRSItem(list, trs);
 
-            strcpy(status, "status = OK\n");
+            strcpy(status, "SRR OK");
             
             return status;
         }
@@ -104,17 +104,17 @@ char* checkTRS(trs_list list, char buffer[])
         else
         {
             destroyTRS(trs);
-            strcpy(status, "status = NOK\n");
+            strcpy(status, "SRR NOK");
             return status;
         }
     }
 }
 
-/*FIXME */
+
 char* stopTranslating(trs_list list, char buffer[])
 {
     char* language;
-    char* status;
+    char* status = (char*) malloc(sizeof(char)*MAX);
     trs_item trs = (trs_item)malloc(sizeof(struct trsItem));
 
     language = getBufferLanguage(buffer);
@@ -122,13 +122,13 @@ char* stopTranslating(trs_list list, char buffer[])
     if(!strcmp(language, "SUR ERR"))
     {
         destroyTRS(trs);
-        strcpy(status, "status = NOK");
+        strcpy(status, "SUR NOK");
         return status;
     }
     else
     {
         trs = findTRS(list, language);
-        strcpy(status, "status = OK");
+        strcpy(status, "SUR OK");
 
         if(trs == NULL)
         {
@@ -141,7 +141,6 @@ char* stopTranslating(trs_list list, char buffer[])
             return status;
         }
     }
-
 }
 
 int main(int argc, const char **argv)  {
@@ -224,19 +223,21 @@ int main(int argc, const char **argv)  {
             repply = checkTRS(server_list, buffer);
 
             /*sends its status to TRS*/
-            sendto(user, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);   
+            sendto(user, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);
         }
         else if(!strncmp( buffer, "SUN", 3))
         {
-            /* the TCS looks for the trs in the server_list and deletes it*/
-            /*repply = stopTranslating(server_list, buffer);
+            /* if the message was received successfuly the TCS looks for the trs in the 
+             * server_list and deletes it if it exist in server_list. Otherwise the status
+             * is NOK.*/
+
+            repply = stopTranslating(server_list, buffer);
             
             sendto(user, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);    
-            */
+            
         }
     }
-    
-
+   
     return 0;
 
 }     
