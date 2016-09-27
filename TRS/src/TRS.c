@@ -184,7 +184,7 @@ void handle_requests(int TRS_port) {
                     bytes_written += write(client_socket, response, response_len);
                 }
             } else if (!strcmp(argument, "f")) {
-                /* FIXME do we even need to do anything with the data? we don't use it for anything */
+                /* TODO save data to a file */
                 char *filename = strtok(NULL, " ");
                 char new_filename[BUFFER_SIZE];
                 size_t new_file_size = 0;
