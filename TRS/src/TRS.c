@@ -177,8 +177,9 @@ void handle_requests(int TRS_port) {
                 }
                 strcat(response, "\n");
                 response_len = strlen(response);
-                while ((bytes_written += write(client_socket, response, response_len)) < response_len)
-                    ;
+                while (bytes_written < response_len) {
+                    bytes_written += write(client_socket, response, response_len);
+                }
             } else if (!strcmp(argument, "f")) {
                 /* TODO handle file translation */
             } else {
