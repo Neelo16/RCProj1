@@ -1,18 +1,19 @@
-TARGETS = TRS/TRS TCS/TCS User/user
+TARGETS = TRS_src/TRS TCS_src/TCS user-src/user
 
 all: $(TARGETS)
 	 cp $(TARGETS) .
 
-TRS/TRS:
-	(cd TRS && make)
+TRS_src/TRS:
+	(cd TRS_src && make)
 
-TCS/TCS:
-	(cd TCS && make)
+TCS_src/TCS:
+	(cd TCS_src && make)
 
-User/user:
-	(cd User && make)
+user-src/user:
+	(cd user-src && make)
 
 clean:
-	(cd TRS && make clean)
-	(cd TCS && make clean)
-	(cd User && make clean)
+	(cd TRS_src && make clean)
+	(cd TCS_src && make clean)
+	(cd user-src && make clean)
+	rm -f TRS user TCS
