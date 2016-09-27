@@ -54,6 +54,8 @@ int main(int argc, char *argv[])
 
     handle_requests(TRS_port);
 
+    register_language(TRS_port, TCS_name, TCS_port, language, 1);
+
     return EXIT_SUCCESS;
 }
 
