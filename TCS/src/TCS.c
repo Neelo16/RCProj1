@@ -14,18 +14,33 @@
 
 char* getBufferLanguage(char buffer[])
 {
+    int i, aux = 0;
     char* language;
+    
+    language = strtok(buffer, " ");
 
-    printf("Buffer: %s\n",buffer);
-    language = strtok(buffer, " ");/* ULQ */
-    language = strtok(NULL, " ");/* language */
-
-    /* The request is not formulated correcly if the user doesnt 
-    add any language or more than one */
-    if(language == NULL || strtok(NULL, " ") != NULL)
-        strcpy(language,"UNR ERR");
-
-    return language;
+    for(i = 0 ; buffer[i] != '\0'; i++)
+    {
+        if(buffer[i] == ' ')
+            aux++;
+    }
+    /* The format is not formulated correcly if the user
+     * doesnt add any language or adds more than one.*/
+    if((aux == 0 || aux > 1)&& language == "UNQ")
+        return "UNR ERR\n";
+    else if( aux == 3 && language == "SRG")
+    {
+        return "SRR ERR\n"; 
+    }
+    else if( aux == 3 && language == "SUN")
+    {
+        return "SUR ERR\n";
+    }
+    else
+    {
+        language = strtok(NULL, " "); /*language*/
+        return language;
+    }
 }
 
 char* getTRSInfo(trs_list list, char* language)
@@ -37,6 +52,7 @@ char* getTRSInfo(trs_list list, char* language)
 
     trs = findTRS(list, language);
     printf("%s\n",language);
+
     /* the language doesnt exist in the server_list */
     if( trs == NULL)
     {
@@ -45,15 +61,92 @@ char* getTRSInfo(trs_list list, char* language)
     }
 
     repplyLen = sprintf(repply, "UNR ");
-    repplyLen = sprintf(repply+repplyLen,"%s %d\n",getIp(trs),getPort(trs));
+    repplyLen = sprintf(repply + repplyLen,"%s %d\n",getIp(trs),getPort(trs));
     
     return repply;
     
 }
 
+char* checkTRS(trs_list list, char buffer[])
+{
+    char* status;
+    char* language;
+    char* ip;
+    char* port;
+    int i, aux = 0;
+    trs_item trs = (trs_item) malloc(sizeof(struct trsItem));
+
+    language = getBufferLanguage(buffer);
+    
+    /*error case*/
+    if(!strcmp(language, "SRR ERR"))
+        return language;
+    else
+    {
+        /* checks if the trs is already in the server_list*/
+        trs = findTRS(list, language);
+        
+        /* if not it adds to the list and sends status OK*/
+        if(trs == NULL)
+        {
+            ip = strtok(NULL, " ");
+            port = strtok(NULL, " ");
+           
+            trs = createTRS(language, ip, atoi(port));
+           
+            addTRSItem(list, trs);
+
+            strcpy(status, "status = OK\n");
+            
+            return status;
+        }
+        /* otherwise sends status not ok*/
+        else
+        {
+            destroyTRS(trs);
+            strcpy(status, "status = NOK\n");
+            return status;
+        }
+    }
+}
+
+/*FIXME */
+char* stopTranslating(trs_list list, char buffer[])
+{
+    char* language;
+    char* status;
+    trs_item trs = (trs_item)malloc(sizeof(struct trsItem));
+
+    language = getBufferLanguage(buffer);
+    
+    if(!strcmp(language, "SUR ERR"))
+    {
+        destroyTRS(trs);
+        strcpy(status, "status = NOK");
+        return status;
+    }
+    else
+    {
+        trs = findTRS(list, language);
+        strcpy(status, "status = OK");
+
+        if(trs == NULL)
+        {
+            destroyTRS(trs);
+            return status;
+        }
+        else
+        {
+            removeTRS(list, language);
+            return status;
+        }
+    }
+
+}
+
 int main(int argc, const char **argv)  {
 
-    int user=0; /* trs; sockets */
+    int user = 0; /* socket */
     /*struct hostent *hostptr;*/
     struct sockaddr_in serveraddr, clientaddr;
     unsigned int addrlen;
@@ -65,8 +158,10 @@ int main(int argc, const char **argv)  {
 
 	/* Create Server List */
 	trs_list server_list = createList(); 
-    addTRSItem(server_list, createTRS("Portugues", "13245", 59000));
+    
+    /*addTRSItem(server_list, createTRS("Portugues", "13245", 59000));
     addTRSItem(server_list, createTRS("Coreano", "13242", 59020));
+    */
 
     /*  Port assignment */
     if( argc > 1)
@@ -115,7 +210,6 @@ int main(int argc, const char **argv)  {
         }
         else if(!strncmp(buffer,"UNQ",3))
         {
-            printf("Oh\n");
             /* gets language requested from the user */
             language = getBufferLanguage(buffer); 
             
@@ -124,19 +218,22 @@ int main(int argc, const char **argv)  {
             sendto(user, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);
             
         }
+        else if(!strncmp( buffer, "SRG", 3))
+        {
+            /*confirms if the trs is in server_list*/
+            repply = checkTRS(server_list, buffer);
 
-        /* TRS 
-
-        trs = socket(AF_INET, SOCK_DGRAM, 0);
-
-        memset((void*)&serveraddr, (int)'\0', sizeof(serveraddr));
-        serveraddr.sin_family = AF_INET;
-        serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-        serveraddr.sin_port = htons((u_short)port);
-        
-        bind(trs, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
-        addrlen = sizeof(clientaddr);
-        */  
+            /*sends its status to TRS*/
+            sendto(user, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);   
+        }
+        else if(!strncmp( buffer, "SUN", 3))
+        {
+            /* the TCS looks for the trs in the server_list and deletes it*/
+            /*repply = stopTranslating(server_list, buffer);
+            
+            sendto(user, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);    
+            */
+        }
     }
     
 

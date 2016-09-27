@@ -54,6 +54,8 @@ int main(int argc, char *argv[])
 
     handle_requests(TRS_port);
 
+    register_language(TRS_port, TCS_name, TCS_port, language, 1);
+
     return EXIT_SUCCESS;
 }
 
@@ -177,8 +179,9 @@ void handle_requests(int TRS_port) {
                 }
                 strcat(response, "\n");
                 response_len = strlen(response);
-                while ((bytes_written += write(client_socket, response, response_len)) < response_len)
-                    ;
+                while (bytes_written < response_len) {
+                    bytes_written += write(client_socket, response, response_len);
+                }
             } else if (!strcmp(argument, "f")) {
                 /* TODO handle file translation */
             } else {

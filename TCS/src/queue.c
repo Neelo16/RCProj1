@@ -116,7 +116,7 @@ void removeTRS(trs_list list, char* language)
         perror("language not found");
     }   
 }
-/* FIXME */
+
 trs_item findTRS(trs_list list, char* language)
 {
     node_link aux;
