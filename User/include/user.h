@@ -37,6 +37,7 @@ typedef struct TCPHandler{
 void cleanLanguagesList(char **languages, int langNumber);
 void cleanUDP(UDPHandler_p handler);
 void cleanTCP(TCPHandler_p handler);
+int safeSendUDP(UDPHandler_p TCSHandler, const char *toSend, unsigned int toSendLen);
 int TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, const char *language);
 void exitMsg(const char *msg);
 void request(UDPHandler_p TCSHandler, TCPHandler_p TRSHandler, char *cmd, char **languages, int langNumber);

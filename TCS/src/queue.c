@@ -90,7 +90,7 @@ void removeTRS(trs_list list, char* language)
 {
     node_link aux, aux2;
     
-    if(list->head->item->language == language)
+    if(!strcmp(list->head->item->language,language))
     {
         aux = list->head;
         list->head = aux->next;
@@ -98,12 +98,11 @@ void removeTRS(trs_list list, char* language)
         list->size--;
         return;
     }
-    for(aux2 = list->head; aux2 != NULL; aux2 = aux)
+    for(aux2 = list->head; aux2->next != NULL; aux2 = aux)
     {
         aux = aux2->next;
-        if(aux->item->language == language)
+        if(!strcmp(aux->item->language, language))
         {
-
             aux2->next = aux->next;
             destroyNode(aux);
             list->size--;
