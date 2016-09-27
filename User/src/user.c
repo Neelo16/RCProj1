@@ -46,29 +46,6 @@ int safeSendUDP(UDPHandler_p TCSHandler, const char *toSend, unsigned int toSend
 	return 0;
 }
 
-int isIPAddress(const char *ip){
-	int nums = 0,points = 0, i = 0;
-	while (*(ip+i) != '\0'){
-		if(*(ip+i) == '.'){
-			if(nums == 0) return 0;
-			else{
-				points++;
-				nums = 0;
-			}
-		}
-		else if(*(ip+i) > 47 && *(ip+i) < 58){
-			if(nums == 3) return 0;
-			else nums++;
-		}
-		else
-			return 0;
-		if(points > 3) return 0;
-		i++;
-	}
-	if(points == 2 || points == 3)
-		return 1;
-	return 0;
-}
 /* ----------------------- Functions for list cmd -------------------------- */
 int getLanguages(UDPHandler_p TCSHandler, char ***languages){
 	char *part;
@@ -325,14 +302,11 @@ int TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, const
 	/* Configure settings of the TCP socket */
 	TRSHandler->server.sin_family = AF_INET;
 	TRSHandler->serverSize = sizeof(TRSHandler->server);
-	if(isIPAddress(ip)) /* Check if TCS gave us an IP or hostname */
+	if((addr = gethostbyname(ip) == NULL)) /* Check if TCS gave us an IP or hostname */
 		TRSHandler->server.sin_addr.s_addr = inet_addr(ip);
-	else{
-		addr = gethostbyname(ip);
-		if(addr == NULL)
-			exitMsg("Error at gethostbyname");
+	else
 		TRSHandler->server.sin_addr.s_addr = ((struct in_addr *) (addr->h_addr_list[0]))->s_addr;
-	}
+	
 	TRSHandler->server.sin_port = htons(port);
 	memset(TRSHandler->server.sin_zero, '\0', sizeof TRSHandler->server.sin_zero);
 
@@ -352,6 +326,7 @@ int main(int argc, char **argv){
 	char **languages = NULL; /* Hold the known languages */
 	int langNumber = 0; /* Number of languages being hold */
 	struct timeval tv; /* timeout */
+	struct hostent *addr;
 
 	/* Create TCP socket co communicate with the TRS's */
 	TRSHandler = (TCPHandler_p) malloc(sizeof(struct TCPHandler));
@@ -377,12 +352,15 @@ int main(int argc, char **argv){
     		case 'p':
     			defaultP = 0;
     			TCSHandler->client.sin_port = htons(atoi(optarg));
-    			/*printf("Using port: %s\n",optarg);*/
+    			printf("Using port: %s\n",optarg);
     			break;
     		case 'n':
     			defaultA = 0;
-    			/*printf("Using address: %s\n",optarg);*/
-    			inet_aton(optarg , &TCSHandler->client.sin_addr);
+    			printf("Using address: %s\n",optarg);
+			if((addr = gethostbyname(optarg)) == NULL)
+				inet_aton(optarg , &TCSHandler->client.sin_addr);
+			else
+				TCSHandler->client.sin_addr.s_addr = ((struct in_addr *) (addr->h_addr_list[0]))->s_addr;
     			break;
     		case '?':
 		        fprintf (stderr, "Unknown option `-%c'.\n", optopt);

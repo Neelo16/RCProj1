@@ -44,7 +44,6 @@ void request(UDPHandler_p TCSHandler, TCPHandler_p TRSHandler, char *cmd, char *
 int list(UDPHandler_p TCSHandler, char ***languages);
 int getLanguages(UDPHandler_p TCSHandler, char ***languages);
 int stringIn(const char *s1, const char *s2);
-int isIPAddress(const char *ip);
 int parseTCSUNR(UDPHandler_p TCSHandler, char **ip, unsigned int *port);
 
 #endif
