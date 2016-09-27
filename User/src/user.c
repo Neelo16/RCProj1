@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "user.h"
+#include <errno.h>
 
 void exitMsg(const char *msg){
 	perror(msg);
@@ -25,15 +26,24 @@ void cleanLanguagesList(char **languages,int langNumber){
 	free(languages);
 }
 
-void safeSendUDP(UDPHandler_p TCSHandler, char *toSend, unsigned int toSendLen){
-	int received;
-	printf("Sending message...\n");
-	if (sendto(TCSHandler->socket, toSend, toSendLen , 0 , (struct sockaddr *) &TCSHandler->client, TCSHandler->clientLen) == -1)
-		exitMsg("Error sending message");
-	printf("Receiving message...\n");
-	if ((received = recvfrom(TCSHandler->socket, TCSHandler->buffer, BUFFSIZE-1, 0, (struct sockaddr *) &TCSHandler->client, &TCSHandler->clientLen)) == -1)
-		exitMsg("Error receiving messages");
-	*(TCSHandler->buffer+received) = '\0';
+int safeSendUDP(UDPHandler_p TCSHandler, const char *toSend, unsigned int toSendLen){
+	int received,tries = 0;
+	while(tries < 3){
+		if (sendto(TCSHandler->socket, toSend, toSendLen , 0 , (struct sockaddr *) &TCSHandler->client, TCSHandler->clientLen) == -1)
+			exitMsg("Error sending message");
+		if ((received = recvfrom(TCSHandler->socket, TCSHandler->buffer, BUFFSIZE-1, 0, (struct sockaddr *) &TCSHandler->client, &TCSHandler->clientLen)) == -1){
+			if(errno != ETIMEDOUT && errno != EAGAIN) /* FIXME */
+				exitMsg("Error receiving messages");
+		}
+		else
+			break;
+		tries++;
+	}
+	if(tries < 3){
+		*(TCSHandler->buffer+received) = '\0';
+		return 1;
+	}
+	return 0;
 }
 
 int isIPAddress(const char *ip){
@@ -80,21 +90,15 @@ int getLanguages(UDPHandler_p TCSHandler, char ***languages){
 }
 
 int list(UDPHandler_p TCSHandler, char ***languages){
-	int received;
 	int langNumber;
 	int i;
+
 	/* Send User List Query */
-	printf("Sending message...\n");
-    if (sendto(TCSHandler->socket, SENDULQ, SENDULQSIZE , 0 , (struct sockaddr *) &TCSHandler->client, TCSHandler->clientLen) == -1)
-		exitMsg("Error sending message");
-	printf("Receiving message...\n");
-	if ((received = recvfrom(TCSHandler->socket, TCSHandler->buffer, BUFFSIZE-1, 0, (struct sockaddr *) &TCSHandler->client, &TCSHandler->clientLen)) == -1)
-		exitMsg("Error receiving messages");
-	*(TCSHandler->buffer+received) = '\0';
+	if(!safeSendUDP(TCSHandler,SENDULQ,SENDULQSIZE))
+		return 0; /* FIXME */
 	langNumber = getLanguages(TCSHandler,languages);
 
 	/* Print languages */
-	puts("Languages available:");
 	for(i = 0; i < langNumber; i++)
 		printf(" %d- %s\n",i+1,(*languages)[i]);
 	return langNumber;
@@ -176,7 +180,6 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 			return;
 		}
 		N = atoi(part);
-		printf(":)\n");
 		words = (char**)malloc(sizeof(char*)*N);
 		for(i = 0; i < N; i++){
 			words[i] = (char *) malloc(sizeof(char)*WORDSIZE);
@@ -195,18 +198,12 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 	while(!good){
 
 		if(strcmp(TRSHandler->language,languages[langName])){
+
 			/* Send UNQ + languageName */
 			received = sprintf(TCSHandler->buffer,"%s %s","UNQ",languages[langName]);
-			printf("Sending: %s to TCS\n",TCSHandler->buffer);
-		    if (sendto(TCSHandler->socket, TCSHandler->buffer, received , 0 , (struct sockaddr *) &TCSHandler->client, TCSHandler->clientLen) == -1)
-				exitMsg("Error sending message");
-			printf("Receiving message...\n");
 
-			/* Receive UNR */
-			if ((received = recvfrom(TCSHandler->socket, TCSHandler->buffer, BUFFSIZE-1, 0, (struct sockaddr *) &TCSHandler->client, &TCSHandler->clientLen)) == -1)
-				exitMsg("Error receiving messages");
-			*(TCSHandler->buffer+received) = '\0';
-			printf("TRS address: %s\n",TCSHandler->buffer);
+			if(!safeSendUDP(TCSHandler,TCSHandler->buffer,received))
+				return; /* FIXME */
 
 			if(!parseTCSUNR(TCSHandler,&ip, &port)) return;
 			good = TCPConnection(TRSHandler, ip, port, languages[langName]);
@@ -233,9 +230,9 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 			free(words[i]);
 		free(words);
 
-		printf("%s\n",TRSHandler->buffer);
 		printf(" %s:",ip);
 		part = strtok(TRSHandler->buffer," ");
+		part = strtok(NULL," ");
 		part = strtok(NULL," ");
 		N = atoi(part);
 		for(i = 0; i < N; i++){
@@ -273,6 +270,8 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 		}
 		if(i > 0)
 			write(TRSHandler->clientFD,TRSHandler->buffer,i);
+		c = '\n';
+		write(TRSHandler->clientFD,&c,1);
 		fclose(file);
 
 		i = 0;
@@ -352,6 +351,7 @@ int main(int argc, char **argv){
 	TCPHandler_p TRSHandler;
 	char **languages = NULL; /* Hold the known languages */
 	int langNumber = 0; /* Number of languages being hold */
+	struct timeval tv; /* timeout */
 
 	/* Create TCP socket co communicate with the TRS's */
 	TRSHandler = (TCPHandler_p) malloc(sizeof(struct TCPHandler));
@@ -359,8 +359,14 @@ int main(int argc, char **argv){
 	/* Create UDP socket to communicate with TCS */
 	TCSHandler = (UDPHandler_p) malloc(sizeof(struct UDPHandler));
 	TCSHandler->clientLen = sizeof(TCSHandler->client);
+
 	if ( (TCSHandler->socket = socket(AF_INET, SOCK_DGRAM,0)) == -1)
 		exitMsg("Error creating UDP socket");
+
+	tv.tv_sec = 3;
+	tv.tv_usec = 0;
+	if (setsockopt(TCSHandler->socket, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0)
+    	exitMsg("Error in setsockopt");
 
 	/* Initialize UDP socket */
 	memset((char *) &TCSHandler->client, 0, sizeof(TCSHandler->client));
@@ -371,11 +377,11 @@ int main(int argc, char **argv){
     		case 'p':
     			defaultP = 0;
     			TCSHandler->client.sin_port = htons(atoi(optarg));
-    			printf("Using port: %s\n",optarg);
+    			/*printf("Using port: %s\n",optarg);*/
     			break;
     		case 'n':
     			defaultA = 0;
-    			printf("Using address: %s\n",optarg);
+    			/*printf("Using address: %s\n",optarg);*/
     			inet_aton(optarg , &TCSHandler->client.sin_addr);
     			break;
     		case '?':
@@ -383,11 +389,11 @@ int main(int argc, char **argv){
     	}
     }
     if(defaultP){
-    	printf("Using default port: %d\n",DEFAULTPORT);
+    	/*printf("Using default port: %d\n",DEFAULTPORT);*/
     	TCSHandler->client.sin_port = htons(DEFAULTPORT);
     }
    	if(defaultA){
-   		printf("Using default addr: %s\n",DEFAULTADDR);
+   		/*printf("Using default addr: %s\n",DEFAULTADDR);*/
 		inet_aton(DEFAULTADDR , &TCSHandler->client.sin_addr);
    	}
 	TCSHandler->client.sin_family = AF_INET;
