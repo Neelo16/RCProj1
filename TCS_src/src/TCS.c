@@ -21,7 +21,7 @@ void getBufferLanguage(char buffer[], char language2[])
         if(buffer[i] == ' ')
             aux++;
     }
-
+    
     language = strtok(buffer, " ");
 
     /* The format is not formulated correcly if the user
@@ -29,10 +29,10 @@ void getBufferLanguage(char buffer[], char language2[])
     if((aux == 0 || aux > 1)&& !strcmp(language, "UNQ"))
         strcpy(language2, "UNR ERR\n");
 
-    else if( aux == 3 && !strcmp(language,"SRG"))
+    else if( aux != 3 && !strcmp(language,"SRG"))
         strcpy(language2,"SRR ERR\n"); 
 
-    else if( aux == 3 && !strcmp(language,"SUN"))
+    else if( aux != 3 && !strcmp(language,"SUN"))
         strcpy(language2,"SUR ERR\n");
 
     else
@@ -88,8 +88,8 @@ void checkTRS(trs_list list, char buffer[], char repply[])
         /* if not it adds to the list and sends status OK*/
         if(trs == NULL)
         {
-            ip = strtok(NULL, " ");
-            port = strtok(NULL, " ");
+            ip = strtok(NULL, " \n");
+            port = strtok(NULL, " \n");
            
             trs = createTRS(language, ip, atoi(port));
            
