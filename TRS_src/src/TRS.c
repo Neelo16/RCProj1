@@ -186,7 +186,7 @@ void handle_requests(int TRS_port) {
                 char *filename = strtok(NULL, " ");
                 char new_filename[BUFFER_SIZE];
                 size_t new_file_size = 0;
-                char *new_file = get_image_translation(filename, new_filename, &new_file_size);
+                FILE *new_file = get_image_translation(filename, new_filename, &new_file_size);
                 if (new_file == NULL) {
                     char const *response = "TRR NTA\n";
                     write(client_socket, response, strlen(response));
@@ -195,15 +195,19 @@ void handle_requests(int TRS_port) {
                     char response[BUFFER_SIZE];
                     size_t response_size = sprintf(response, "TRR f %s %lu ", new_filename, new_file_size);
                     /* FIXME check if we send everything */
+
                     bytes_written = 0;
-                    while ((bytes_written += write(client_socket, response, response_size)) < response_size)
-                        ;
+                    while (bytes_written < response_size)
+                        bytes_written += write(client_socket, response, response_size);
+
                     bytes_written = 0;
-                    
-                    while ((bytes_written += write(client_socket, new_file, new_file_size)) < new_file_size)
-                        ;
-                    write(client_socket, "\n", 1);
-                    free(new_file);
+                    bytes_read = 0;
+                    while (bytes_written < new_file_size) {
+                        response_size = fread(response, 1, BUFFER_SIZE, new_file);
+                        bytes_written += write(client_socket, response, response_size);
+                    }
+
+                    fclose(new_file);
                 }
             } else {
                 /* TODO tell the client they're bad and should feel bad */
@@ -235,22 +239,16 @@ int get_translation(char const *untranslated, char *translated, char const *file
     return got_translation;
 } 
 
-char *get_image_translation(char const *filename, char *new_filename, size_t *new_file_size) {
+FILE *get_image_translation(char const *filename, char *new_filename, size_t *new_file_size) {
     FILE *translated_file = NULL;
-    char *new_file_data = NULL;
     if (!get_translation(filename, new_filename, "file_translation.txt")) {
         return NULL;
     }
-    translated_file = fopen(new_filename, "r");
-    *new_file_size = fseek(translated_file, 0, SEEK_END);
-    printf("%lu\n", *new_file_size);
+    translated_file = fopen(new_filename, "rb");
+    fseek(translated_file, 0, SEEK_END);
     *new_file_size = ftell(translated_file);
-    printf("%lu\n", *new_file_size);
-    new_file_data = malloc(*new_file_size);
     fseek(translated_file, 0, SEEK_SET);
-    fread(new_file_data, 1, *new_file_size, translated_file);
-    fclose(translated_file);
-    return new_file_data;
+    return translated_file;
 }
 
 int get_text_translation(char const *untranslated, char *translated) {
