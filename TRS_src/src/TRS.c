@@ -68,8 +68,8 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
     unsigned addrlen = sizeof(TCS_addr);
     char buffer[BUFFER_SIZE];
     int result = 0;
-    int bytes_sent = 0;
-    int bytes_received = 0;
+    size_t bytes_sent = 0;
+    size_t bytes_received = 0;
 
     gethostname(buffer, BUFFER_SIZE);
     TRS_ptr = gethostbyname(buffer);
@@ -138,8 +138,8 @@ void handle_requests(int TRS_port) {
         unsigned client_len;
         int client_socket = accept(TRS_socket, (struct sockaddr*)&client_addr, &client_len);
         char buffer[BUFFER_SIZE];
-        int bytes_read = 0;
-        int bytes_written = 0;
+        size_t bytes_read = 0;
+        size_t bytes_written = 0;
         char *argument = NULL;
 
         memset(buffer, '\0', sizeof(buffer));
