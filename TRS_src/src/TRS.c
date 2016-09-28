@@ -134,7 +134,6 @@ void handle_requests(int TRS_port) {
     }
 
     while (running) {
-        running = 0;
         struct sockaddr_in client_addr;
         unsigned client_len;
         int client_socket = accept(TRS_socket, (struct sockaddr*)&client_addr, &client_len);
@@ -160,12 +159,13 @@ void handle_requests(int TRS_port) {
             argument = strtok(NULL, " ");
             if (!strcmp(argument, "t")) {
                 /* FIXME correctly format this response with number of words to send */ 
-                char response[512] = "TRR";
+                char response[512];
                 int response_len = 0;
                 int num_words = 0;
                 bytes_written = 0;
                 argument = strtok(NULL, " ");
                 num_words = atoi(argument);
+                response_len = sprintf(response, "TRR t %d", num_words);
                 while (num_words-- > 0) {
                     char translated_word[31];
                     /* FIXME this memset is probably unnecessary */
@@ -197,8 +197,13 @@ void handle_requests(int TRS_port) {
                     char response[BUFFER_SIZE];
                     size_t response_size = sprintf(response, "SRR %s %lu ", new_filename, new_file_size);
                     /* FIXME check if we send everything */
-                    write(client_socket, response, response_size);
-                    write(client_socket, new_file, new_file_size);
+                    bytes_written = 0;
+                    while ((bytes_written += write(client_socket, response, response_size)) < response_size)
+                        ;
+                    bytes_written = 0;
+                    
+                    while ((bytes_written += write(client_socket, new_file, new_file_size)) < new_file_size)
+                        ;
                     write(client_socket, "\n", 1);
                     free(new_file);
                 }
@@ -239,6 +244,9 @@ char *get_image_translation(char const *filename, char *new_filename, size_t *ne
     }
     translated_file = fopen(new_filename, "r");
     *new_file_size = fseek(translated_file, 0, SEEK_END);
+    printf("%lu\n", *new_file_size);
+    *new_file_size = ftell(translated_file);
+    printf("%lu\n", *new_file_size);
     new_file_data = malloc(*new_file_size);
     fseek(translated_file, 0, SEEK_SET);
     fread(new_file_data, 1, *new_file_size, translated_file);
