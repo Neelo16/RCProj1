@@ -214,6 +214,7 @@ void handle_requests(int TRS_port) {
             /* TODO do different stuff */
         }
 
+        sleep(5);
         close(client_socket);
     }
 
