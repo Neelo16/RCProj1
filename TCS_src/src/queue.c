@@ -12,13 +12,11 @@ trs_item createTRS(const char *language, const char *ip, unsigned int port)
     trs->port = port;
     if(strlen(language) <= 20 && strlen(ip) <= 20)
     {
-        trs->language = (char *) malloc(sizeof(char)*21);
-        trs->ip = (char *) malloc(sizeof(char)*21);
         strcpy(trs->ip,ip);
         strcpy(trs->language,language);
     }
     else
-        perror("language or ip are too long");
+        fprintf( stderr, "language or ip are too long");
     
     return trs;
 }
@@ -55,7 +53,7 @@ node_link createNode(trs_item trs)
 
 void destroyNode(node_link node)
 {
-    free(node->item);
+    destroyTRS(node->item);
     free(node);
 }
 
@@ -90,7 +88,7 @@ void removeTRS(trs_list list, char* language)
 {
     node_link aux, aux2;
     
-    if(!strcmp(list->head->item->language,language))
+    if(!strcmp( list->head->item->language, language))
     {
         aux = list->head;
         list->head = aux->next;
@@ -111,9 +109,7 @@ void removeTRS(trs_list list, char* language)
         
     }
     if(aux2 == NULL)
-    {
-        perror("language not found");
-    }   
+        fprintf(stderr, "language not found");
 }
 
 trs_item findTRS(trs_list list, char* language)
@@ -129,15 +125,20 @@ trs_item findTRS(trs_list list, char* language)
     return NULL;
 }
 
-void destroylist(trs_list list)
+void destroyList(trs_list list)
 {
     node_link aux;
+    
     aux = list->head;
-
-    while(list->head != NULL){
-        list->head = aux->next;
+    
+    while(aux != NULL)
+    {
+        list->head = list->head->next;
         destroyNode(aux);
+        aux = list->head;
     }
+
+    free(list);    
 }
 
 int sizeList(trs_list list)
@@ -145,10 +146,9 @@ int sizeList(trs_list list)
     return list->size;
 }
 
-char* listLanguages(trs_list list)
+void listLanguages(trs_list list, char *aux_r)
 {
     node_link aux;
-    char* aux_r = (char*) malloc(sizeof(char)*MAX);
     int auxRLen;
 
     auxRLen = sprintf(aux_r, "%s %d", "ULR", sizeList(list));
@@ -157,9 +157,9 @@ char* listLanguages(trs_list list)
     {
         auxRLen += sprintf(aux_r+auxRLen," %s",aux->item->language);
     }
+
     *(aux_r+auxRLen) = '\0';
     printf("%s\n",aux_r);
-    return aux_r;
 }
 
 void showList(trs_list list)
@@ -173,5 +173,3 @@ void showList(trs_list list)
     }
     printf("\n");
 }
-
-
