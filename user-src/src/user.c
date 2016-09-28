@@ -305,7 +305,7 @@ int TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, const
 	/* Configure settings of the TCP socket */
 	TRSHandler->server.sin_family = AF_INET;
 	TRSHandler->serverSize = sizeof(TRSHandler->server);
-	if((addr = gethostbyname(ip) == NULL)) /* Check if TCS gave us an IP or hostname */
+	if((addr = gethostbyname(ip)) == NULL) /* Check if TCS gave us an IP or hostname */
 		TRSHandler->server.sin_addr.s_addr = inet_addr(ip);
 	else
 		TRSHandler->server.sin_addr.s_addr = ((struct in_addr *) (addr->h_addr_list[0]))->s_addr;
