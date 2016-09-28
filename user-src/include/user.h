@@ -4,7 +4,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 
-#define BUFFSIZE 512
+#define BUFFSIZE 2048
 #define CMDSIZE 128
 
 #define EXITCMD "exit\n"

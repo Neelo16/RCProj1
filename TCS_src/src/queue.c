@@ -16,7 +16,7 @@ trs_item createTRS(const char *language, const char *ip, unsigned int port)
         strcpy(trs->language,language);
     }
     else
-        perror("language or ip are too long");
+        fprintf( stderr, "language or ip are too long");
     
     return trs;
 }
@@ -53,7 +53,7 @@ node_link createNode(trs_item trs)
 
 void destroyNode(node_link node)
 {
-    free(node->item);
+    destroyTRS(node->item);
     free(node);
 }
 
@@ -88,7 +88,7 @@ void removeTRS(trs_list list, char* language)
 {
     node_link aux, aux2;
     
-    if(!strcmp(list->head->item->language,language))
+    if(!strcmp( list->head->item->language, language))
     {
         aux = list->head;
         list->head = aux->next;
@@ -109,9 +109,7 @@ void removeTRS(trs_list list, char* language)
         
     }
     if(aux2 == NULL)
-    {
-        perror("language not found");
-    }   
+        fprintf(stderr, "language not found");
 }
 
 trs_item findTRS(trs_list list, char* language)
@@ -130,12 +128,17 @@ trs_item findTRS(trs_list list, char* language)
 void destroyList(trs_list list)
 {
     node_link aux;
+    
     aux = list->head;
-
-    while(list->head != NULL){
-        list->head = aux->next;
+    
+    while(aux != NULL)
+    {
+        list->head = list->head->next;
         destroyNode(aux);
+        aux = list->head;
     }
+
+    free(list);    
 }
 
 int sizeList(trs_list list)
@@ -154,6 +157,7 @@ void listLanguages(trs_list list, char *aux_r)
     {
         auxRLen += sprintf(aux_r+auxRLen," %s",aux->item->language);
     }
+
     *(aux_r+auxRLen) = '\0';
     printf("%s\n",aux_r);
 }
@@ -169,5 +173,3 @@ void showList(trs_list list)
     }
     printf("\n");
 }
-
-

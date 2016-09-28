@@ -21,7 +21,7 @@ void getBufferLanguage(char buffer[], char language2[])
         if(buffer[i] == ' ')
             aux++;
     }
-    
+
     language = strtok(buffer, " ");
 
     /* The format is not formulated correcly if the user
@@ -55,13 +55,15 @@ void getTRSInfo(trs_list list, char* language, char repply[])
     /* the language doesnt exist in the server_list */
     if( trs == NULL)
     {
+    	destroyTRS(trs);
         strcpy(repply, "UNR EOF\n");
     }
     else
     {
     	repplyLen = sprintf(repply, "UNR ");
-
     	repplyLen = sprintf(repply + repplyLen,"%s %s %d\n",language, getIp(trs),getPort(trs));
+
+    	destroyTRS(trs);
     }
 
     
@@ -79,7 +81,11 @@ void checkTRS(trs_list list, char buffer[], char repply[])
     
     /*error case*/
     if(!strcmp(language, "SRR ERR\n"))
+    {
         strcpy(repply, language);
+
+        destroyTRS(trs);
+    }
     else
     {
         /* checks if the trs is already in the server_list*/
@@ -95,15 +101,13 @@ void checkTRS(trs_list list, char buffer[], char repply[])
            
             addTRSItem(list, trs);
 
-            strcpy(repply, "SRR OK\n");
-            
+            strcpy(repply, "SRR OK\n");            
         }
         /* otherwise sends status not ok*/
         else
-        {
-            destroyTRS(trs);
             strcpy(repply, "SRR NOK\n");
-        }
+
+        destroyTRS(trs);
     }
 }
 
@@ -117,12 +121,14 @@ void stopTranslating(trs_list list, char buffer[], char repply[])
     
     if(!strcmp(language, "SUR ERR\n"))
     {
-        destroyTRS(trs);
         strcpy(repply, "SUR NOK\n");
+
+        destroyTRS(trs);
     }
     else
     {
         trs = findTRS(list, language);
+
         strcpy(repply, "SUR OK\n");
 
         if(trs == NULL)
@@ -164,12 +170,9 @@ int main(int argc, const char **argv)  {
     
     /*  Port assignment */
     if( argc > 2 && !strcmp(argv[1], "-p"))
-    {
         port = atoi(argv[1]);
-    }else /* in case -p TCSport is omitted */
-    {
+    else /* in case -p TCSport is omitted */
         port = PORT;
-    }
 
 
     /* USER */
@@ -206,7 +209,7 @@ int main(int argc, const char **argv)  {
     	if(retval == -1) {
     		perror("Occurrer an error on select");
     		finishProgram(&user, server_list);
-    		break;
+    		return EXIT_FAILURE;
     	}
     	else if( FD_ISSET(user, &rfds))
     	{
@@ -237,7 +240,7 @@ int main(int argc, const char **argv)  {
 	                	return EXIT_FAILURE;
 	                }
 	            }
-	            else if(server_list->size == 0)
+	            else if( sizeList(server_list) == 0)
 	            {
 	                strcpy(repply,"ULR EOF\n");
 	                error = sendto(user, repply, 8, 0, (struct sockaddr*) &clientaddr, addrlen);
@@ -251,7 +254,7 @@ int main(int argc, const char **argv)  {
 	            }
 	            else
 	            {
-	                listLanguages(server_list,repply);
+	                listLanguages(server_list, repply);
 	                error = sendto(user, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);
 
 	                if(error == -1)
@@ -262,7 +265,7 @@ int main(int argc, const char **argv)  {
 	                }
 	            }
 	        }
-	        else if(!strncmp(buffer,"UNQ",3))
+	        else if(!strncmp(buffer, "UNQ", 3))
 	        {
 	            /* gets language requested from the user */
 	            getBufferLanguage(buffer, language); 

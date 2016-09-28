@@ -101,6 +101,7 @@ int stringIn(const char *s1, const char *s2){
 
 int parseTCSUNR(UDPHandler_p TCSHandler, char **ip, unsigned int *port){
 	char *part;
+	printf("%s\n",TCSHandler->buffer);
 	part = strtok(TCSHandler->buffer, " ");
 	if(part == NULL || strcmp(part,"UNR")){
 		printf("Error. Received %s from TCS server\n",TCSHandler->buffer);
@@ -130,10 +131,12 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 	int langName,N=0;
 	char filename[100];
 	char **words;
-	char *part,c,*ip;
-	unsigned int port;
+	char *part,c;
+	char ip[] = "193.136.131.194";
+	unsigned int port = 59000;
 	long int size = 0;
 	int good = 0;
+	int total = 0;
 	FILE *file;
 
 	part = strtok(cmd," ");
@@ -175,17 +178,16 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 		return;
 	}
 	
-	while(!good){
+	while(!good && total < 3){ /* Tries 3 times */
 
 		if(strcmp(TRSHandler->language,languages[langName])){
 
 			/* Send UNQ + languageName */
-			received = sprintf(TCSHandler->buffer,"%s %s","UNQ",languages[langName]);
+			received = sprintf(TCSHandler->buffer,"%s %s\n","UNQ",languages[langName]);
 
-			if(!safeSendUDP(TCSHandler,TCSHandler->buffer,received))
-				return; /* FIXME */
-
-			if(!parseTCSUNR(TCSHandler,&ip, &port)) return;
+			/*if(!safeSendUDP(TCSHandler,TCSHandler->buffer,received))
+				return;  FIXME 
+			if(!parseTCSUNR(TCSHandler,&ip, &port)) return;*/
 			good = TCPConnection(TRSHandler, ip, port, languages[langName]);
 		}
 		else{
@@ -193,9 +195,15 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 			if(!good)
 				memset(TRSHandler->language,0,strlen(TRSHandler->language));
 		}
+		total++;
 
 
 	}
+	if(total == 3){
+		printf("Could not connect to TRS server\n");
+		return;
+	}
+	total = 0;
 
 	if(c == 't'){
 		received = sprintf(TRSHandler->buffer, "%s %c %d","TRQ",'t',N);
@@ -253,9 +261,9 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 		c = '\n';
 		write(TRSHandler->clientFD,&c,1);
 		fclose(file);
-
 		i = 0;
-		read(TRSHandler->clientFD,TRSHandler->buffer,6);/*TRR f*/
+		
+		read(TRSHandler->clientFD,TRSHandler->buffer,6);/*TRR f */
 		while(1){
 			read(TRSHandler->clientFD,&c,1);/*filename */
 			if(c == ' ')
@@ -265,21 +273,35 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 		}
 		*(filename+i) = '\0';
 
-		file = fopen(filename,"wb");
+		file = fopen(filename, "wb");
 		i = 0;
 		while(1){
-			i += read(TRSHandler->clientFD,TRSHandler->buffer+i,1); /*size */
+			while(!read(TRSHandler->clientFD,TRSHandler->buffer+i,1)); /*size */
+			printf("%c %d\n",*(TRSHandler->buffer+i),i);
 			if(*(TRSHandler->buffer+i) == ' ')
 				break;
+			i += 1;
 		}
-		*(TRSHandler->buffer+i+1) = '\0';
-		size = atoi(TRSHandler->buffer);
+		*(TRSHandler->buffer+i) = '\0';
+		size = atol(TRSHandler->buffer); 
+
+		i = 0;
+		printf("Size: %ld\n",size);
 		if(file != NULL){
 			while(1){
 				received = read(TRSHandler->clientFD,TRSHandler->buffer,BUFFSIZE);
-				*(TRSHandler->buffer+received) = '\0';
-				fputs(TRSHandler->buffer,file);
-				if(received < BUFFSIZE)
+				if(!received){
+					perror("Erro");
+					return;
+				}
+				total += received;
+				if(i != total){
+					printf("%d\n",total);
+					i = total;
+				}
+				received = total > size? received-size+total: received;
+				fwrite(TRSHandler->buffer,1,received,file);
+				if(total >= size)
 					break;
 			}
 			fclose(file);
