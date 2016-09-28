@@ -12,8 +12,6 @@ trs_item createTRS(const char *language, const char *ip, unsigned int port)
     trs->port = port;
     if(strlen(language) <= 20 && strlen(ip) <= 20)
     {
-        trs->language = (char *) malloc(sizeof(char)*21);
-        trs->ip = (char *) malloc(sizeof(char)*21);
         strcpy(trs->ip,ip);
         strcpy(trs->language,language);
     }
@@ -129,7 +127,7 @@ trs_item findTRS(trs_list list, char* language)
     return NULL;
 }
 
-void destroylist(trs_list list)
+void destroyList(trs_list list)
 {
     node_link aux;
     aux = list->head;
@@ -145,10 +143,9 @@ int sizeList(trs_list list)
     return list->size;
 }
 
-char* listLanguages(trs_list list)
+void listLanguages(trs_list list, char *aux_r)
 {
     node_link aux;
-    char* aux_r = (char*) malloc(sizeof(char)*MAX);
     int auxRLen;
 
     auxRLen = sprintf(aux_r, "%s %d", "ULR", sizeList(list));
@@ -159,7 +156,6 @@ char* listLanguages(trs_list list)
     }
     *(aux_r+auxRLen) = '\0';
     printf("%s\n",aux_r);
-    return aux_r;
 }
 
 void showList(trs_list list)

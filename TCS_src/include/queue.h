@@ -7,9 +7,10 @@ typedef struct trsList* trs_list;
 
 struct trsItem
 {
-    char* language;
-    char* ip;
+    char language[21];
+    char ip[21];
     unsigned int port;
+
 };
 
 struct q_node
@@ -39,6 +40,6 @@ void removeTRS(trs_list list, char* language);
 int sizeList(trs_list list);
 void destroyList(trs_list list);
 void showList(trs_list list);
-char* listLanguages(trs_list list);
+void listLanguages(trs_list list, char *aux_r);
 trs_item findTRS(trs_list list, char* language);
 #endif
