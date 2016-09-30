@@ -62,8 +62,6 @@ void getTRSInfo(trs_list list, char* language, char repply[])
     {
     	repplyLen = sprintf(repply, "UNR ");
     	repplyLen = sprintf(repply + repplyLen,"%s %s %d\n",language, getIp(trs),getPort(trs));
-
-    	destroyTRS(trs);
     }
 
     
@@ -84,7 +82,6 @@ void checkTRS(trs_list list, char buffer[], char repply[])
     {
         strcpy(repply, language);
 
-        destroyTRS(trs);
     }
     else
     {
@@ -107,7 +104,6 @@ void checkTRS(trs_list list, char buffer[], char repply[])
         else
             strcpy(repply, "SRR NOK\n");
 
-        destroyTRS(trs);
     }
 }
 
@@ -164,10 +160,10 @@ int main(int argc, const char **argv)  {
 
 	/* Create Server List */
 	server_list = createList(); 
-    
+    /*
     addTRSItem(server_list, createTRS("Portugues", "13245", 59000));
     addTRSItem(server_list, createTRS("Coreano", "13242", 59020));
-    
+    */
     /*  Port assignment */
     if( argc > 2 && !strcmp(argv[1], "-p"))
         port = atoi(argv[1]);
