@@ -68,8 +68,8 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
     unsigned addrlen = sizeof(TCS_addr);
     char buffer[BUFFER_SIZE];
     int result = 0;
-    int bytes_sent = 0;
-    int bytes_received = 0;
+    size_t bytes_sent = 0;
+    size_t bytes_received = 0;
 
     gethostname(buffer, BUFFER_SIZE);
     TRS_ptr = gethostbyname(buffer);
@@ -138,8 +138,8 @@ void handle_requests(int TRS_port) {
         unsigned client_len;
         int client_socket = accept(TRS_socket, (struct sockaddr*)&client_addr, &client_len);
         char buffer[BUFFER_SIZE];
-        int bytes_read = 0;
-        int bytes_written = 0;
+        size_t bytes_read = 0;
+        size_t bytes_written = 0;
         char *argument = NULL;
 
         memset(buffer, '\0', sizeof(buffer));
@@ -168,8 +168,6 @@ void handle_requests(int TRS_port) {
                 response_len = sprintf(response, "TRR t %d", num_words);
                 while (num_words-- > 0) {
                     char translated_word[31];
-                    /* FIXME this memset is probably unnecessary */
-                    /* memset(translated_word, '\0', sizeof(translated_word)); */
                     argument = strtok(NULL, " ");
                     if (!get_text_translation(argument, translated_word)) {
                         strcpy(response, "TRR NTA");
@@ -188,24 +186,28 @@ void handle_requests(int TRS_port) {
                 char *filename = strtok(NULL, " ");
                 char new_filename[BUFFER_SIZE];
                 size_t new_file_size = 0;
-                char *new_file = get_image_translation(filename, new_filename, &new_file_size);
+                FILE *new_file = get_image_translation(filename, new_filename, &new_file_size);
                 if (new_file == NULL) {
                     char const *response = "TRR NTA\n";
                     write(client_socket, response, strlen(response));
                 }
                 else {
                     char response[BUFFER_SIZE];
-                    size_t response_size = sprintf(response, "SRR %s %lu ", new_filename, new_file_size);
+                    size_t response_size = sprintf(response, "TRR f %s %lu ", new_filename, new_file_size);
                     /* FIXME check if we send everything */
+
                     bytes_written = 0;
-                    while ((bytes_written += write(client_socket, response, response_size)) < response_size)
-                        ;
+                    while (bytes_written < response_size)
+                        bytes_written += write(client_socket, response, response_size);
+
                     bytes_written = 0;
-                    
-                    while ((bytes_written += write(client_socket, new_file, new_file_size)) < new_file_size)
-                        ;
-                    write(client_socket, "\n", 1);
-                    free(new_file);
+                    bytes_read = 0;
+                    while (bytes_written < new_file_size) {
+                        response_size = fread(response, 1, BUFFER_SIZE, new_file);
+                        bytes_written += write(client_socket, response, response_size);
+                    }
+
+                    fclose(new_file);
                 }
             } else {
                 /* TODO tell the client they're bad and should feel bad */
@@ -214,6 +216,7 @@ void handle_requests(int TRS_port) {
             /* TODO do different stuff */
         }
 
+        sleep(5);
         close(client_socket);
     }
 
@@ -236,22 +239,16 @@ int get_translation(char const *untranslated, char *translated, char const *file
     return got_translation;
 } 
 
-char *get_image_translation(char const *filename, char *new_filename, size_t *new_file_size) {
+FILE *get_image_translation(char const *filename, char *new_filename, size_t *new_file_size) {
     FILE *translated_file = NULL;
-    char *new_file_data = NULL;
     if (!get_translation(filename, new_filename, "file_translation.txt")) {
         return NULL;
     }
-    translated_file = fopen(new_filename, "r");
-    *new_file_size = fseek(translated_file, 0, SEEK_END);
-    printf("%lu\n", *new_file_size);
+    translated_file = fopen(new_filename, "rb");
+    fseek(translated_file, 0, SEEK_END);
     *new_file_size = ftell(translated_file);
-    printf("%lu\n", *new_file_size);
-    new_file_data = malloc(*new_file_size);
     fseek(translated_file, 0, SEEK_SET);
-    fread(new_file_data, 1, *new_file_size, translated_file);
-    fclose(translated_file);
-    return new_file_data;
+    return translated_file;
 }
 
 int get_text_translation(char const *untranslated, char *translated) {

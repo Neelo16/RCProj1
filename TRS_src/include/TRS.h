@@ -13,10 +13,10 @@ void handle_requests(int TRS_port);
 /* Returns 0 on failure, and a nonzero value otherwise.                                            */
 int get_text_translation(char const *untranslated, char *translated);
 
-/* Get image translation for the file named filename, and return the data in the translated file.  */
+/* Get image translation for the file named filename, and return the corresponding file pointer.   */
 /* Returns NULL on failure. new_filename will be modified to contain the returned filename, and    */
 /* new_file_size to contain the number of bytes in the new file.                                   */
-char *get_image_translation(char const *filename, char *new_filename, size_t *new_file_size);
+FILE *get_image_translation(char const *filename, char *new_filename, size_t *new_file_size);
 
 /* Get translation for the word contained in untranslated, and place the result in translated. */
 /*  */
