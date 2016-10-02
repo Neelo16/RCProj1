@@ -148,21 +148,32 @@ void handle_requests(int TRS_port) {
             /* FIXME */
         }
 
-        /* FIXME need to check if we received everything */
-        bytes_read = read(client_socket, buffer, sizeof(buffer));
-        if (buffer[bytes_read - 1] == '\n') {
-            buffer[bytes_read - 1] = '\0';
+        /* Ensure we receive at least enough bytes to determine if we have a valid request   */
+        /* No way to know if we received the whole thing yet as we don't know if it's a file */
+        /* or a list of words. */
+        while (bytes_read < strlen("TRQ f")) {
+            bytes_read += read(client_socket, buffer, sizeof(buffer));
         }
+
         argument = strtok(buffer, " ");
 
         if (!strcmp(argument, "TRQ")) {
             argument = strtok(NULL, " ");
             if (!strcmp(argument, "t")) {
-                /* FIXME correctly format this response with number of words to send */ 
                 char response[512];
                 int response_len = 0;
                 int num_words = 0;
                 bytes_written = 0;
+
+                /* Now that we know this must be a string terminated by a newline, we can check if */
+                /* we received the entire request */
+
+                while (buffer[bytes_read - 1] != '\n') {
+                    bytes_read += read(client_socket, buffer + bytes_read, sizeof(buffer) - bytes_read);
+                }
+                /* Get rid of the newline character at the end and turn this into a null-terminated string */
+                buffer[bytes_read - 1] = '\0';
+
                 argument = strtok(NULL, " ");
                 num_words = atoi(argument);
                 response_len = sprintf(response, "TRR t %d", num_words);
@@ -183,6 +194,7 @@ void handle_requests(int TRS_port) {
                 }
             } else if (!strcmp(argument, "f")) {
                 /* TODO save data to a file */
+                /* TODO make sure we received everything we need */
                 char *filename = strtok(NULL, " ");
                 char new_filename[BUFFER_SIZE];
                 size_t new_file_size = 0;
