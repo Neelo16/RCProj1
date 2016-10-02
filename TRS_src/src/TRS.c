@@ -221,10 +221,11 @@ void handle_requests(int TRS_port) {
                     fclose(new_file);
                 }
             } else {
-                /* TODO tell the client they're bad and should feel bad */
+                goto BAD_FORMAT;
             }
         } else {
-            /* TODO do different stuff */
+BAD_FORMAT:
+            write(client_socket, "TRR ERR\n", strlen("TRR ERR\n"));
         }
 
         sleep(5);
