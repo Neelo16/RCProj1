@@ -61,7 +61,7 @@ void getTRSInfo(trs_list list, char* language, char repply[])
     else
     {
     	repplyLen = sprintf(repply, "UNR ");
-    	repplyLen = sprintf(repply + repplyLen,"%s %s %d\n",language, getIp(trs),getPort(trs));
+    	repplyLen = sprintf(repply + repplyLen,"%s %d\n", getIp(trs),getPort(trs));
     }
 
     
