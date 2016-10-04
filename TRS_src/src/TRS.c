@@ -205,7 +205,7 @@ void handle_requests(int TRS_port) {
                 }
                 else {
                     char response[BUFFER_SIZE];
-                    size_t response_size = sprintf(response, "TRR f %s %lu ", new_filename, new_file_size);
+                    size_t response_size = sprintf(response, "TRR f %s %d ", new_filename, new_file_size);
 
                     bytes_written = 0;
                     while (bytes_written < response_size)

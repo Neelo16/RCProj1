@@ -1,4 +1,3 @@
-/* TODO MAKE CODE MORE BEAUTIFUL. FILE TRANSFER. FIX int 2147483647+1 BUGS */
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -119,19 +118,14 @@ int parseTCSUNR(UDPHandler_p TCSHandler, char **ip, unsigned int *port){
 		printf("Error. Received %s from TCS server\n",TCSHandler->buffer);
 		return 0;
 	}
-	part = strtok(NULL," ");
-	if(part == NULL){
-		printf("Didnt receive enough data from TCS: %s\n",TCSHandler->buffer);
-		return 0;
-	}
 	*ip = strtok(NULL," ");
 	if(*ip == NULL){
-		printf("Didnt receive enough data from TCS: %s\n",TCSHandler->buffer);
+		printf("Didnt receive enough data from TCS2: %s\n",TCSHandler->buffer);
 		return 0;
 	}
 	part = strtok(NULL, " ");
 	if (part == NULL){
-		printf("Didnt receive enough data from TCS: %s\n",TCSHandler->buffer);
+		printf("Didnt receive enough data from TCS3: %s\n",TCSHandler->buffer);
 		return 0;
 	}	
 	*port = atoi(part);
@@ -152,10 +146,10 @@ int checkReceive(TCPHandler_p TRSHandler, int toReceive){
 }
 
 void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **languages, int langNumber){
+	char *words[10];	
 	int i = 0,received = 0;
 	int langName,N=0;
 	char filename[100];
-	char **words;
 	char *part,c;
 	char *ip;
 	unsigned int port;
@@ -167,6 +161,10 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 	part = strtok(cmd," ");
 	part = strtok(NULL," ");
 	langName = atoi(part)-1;
+	if(langName >= langNumber){
+		printf("You tried to translate from an invalid language. You can type 'list' to get the list of languages.\n");
+		return;	
+	}
 	if((part = strtok(NULL," ")) == NULL) {
 		printf("Not enough arguments for request\n");
 		return;
@@ -183,19 +181,11 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 		printf("Sending request of translation from %s to portuguese of this image: %s\n",languages[langName],filename);
 	}
 	else if(c == 't'){
-		if((part = strtok(NULL," ")) == NULL) {
-			printf("Not enough arguments for request\n");
-			return;
-		}
-		N = atoi(part);
-		words = (char**)safeMalloc(sizeof(char*)*N);
-		for(i = 0; i < N; i++){
-			words[i] = (char *) safeMalloc(sizeof(char)*WORDSIZE);
-			if((part = strtok(NULL," ")) == NULL) {
-				printf("Not enough arguments for request\n");
-				return;
-			}
-			strcpy(words[i],part);
+		for(N = 0; N < 10; N++){
+			words[N] = (char *) safeMalloc(sizeof(char)*WORDSIZE);
+			if((part = strtok(NULL," ")) == NULL)
+				break;
+			strcpy(words[N],part);
 		}
 	}
 	else{
@@ -235,17 +225,32 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 		for(i = 0; i < N; i++)
 			received += sprintf(TRSHandler->buffer+received," %s",words[i]);
 		write(TRSHandler->clientFD,TRSHandler->buffer,received);
-		received = read(TRSHandler->clientFD,TRSHandler->buffer,BUFFSIZE-1);
+		total = 0;	
+		*(TRSHandler->buffer) = '\0';
+		while(received != -1){
+			received = read(TRSHandler->clientFD,TRSHandler->buffer+total,BUFFSIZE-total-1);
+			total += received;
+			if(received && *(TRSHandler->buffer+total-1) == '\n')
+				break;
+		}
 		if(received == -1){
 			perror("Couldnt receive data from TRS");
 			return;
 		}
+		total = 0;
 		*(TRSHandler->buffer+received) = '\0';
+		if(!strcmp(TRSHandler->buffer,"TRR NTA\n")){
+			printf("No translation available\n");
+			return;		
+		}
+		else if(!strcmp(TRSHandler->buffer,"TRR ERR\n")){
+			printf("Too many words to translate\n");
+			return;		
+		}
 
 		/* Free some resources */
 		for(i = 0; i < N; i++)
-			free(words[i]);
-		free(words);
+			free(words[i]);	
 
 		printf(" %s:",ip);
 		part = strtok(TRSHandler->buffer," ");
@@ -300,9 +305,16 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 		fclose(file);
 		i = 0;
 		
-
 		if(checkReceive(TRSHandler,6))/*TRR f */
 			return;
+		if(!strcmp(TRSHandler->buffer,"TRR NTA\n")){
+			printf("No translation available\n");			
+			return;
+		}
+		else if(!strcmp(TRSHandler->buffer,"TRR ERR\n")){
+			printf("Too many words to translate\n");
+			return;		
+		}
 		while(1){
 			read(TRSHandler->clientFD,&c,1);/*filename */
 			if(c == ' ')
@@ -325,7 +337,6 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 		size = atol(TRSHandler->buffer); 
 
 		i = 0;
-		printf("Size: %ld\n",size);
 		if(file != NULL){
 			while(1){
 				received = read(TRSHandler->clientFD,TRSHandler->buffer,BUFFSIZE);

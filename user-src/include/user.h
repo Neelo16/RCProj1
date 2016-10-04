@@ -5,7 +5,7 @@
 #include <string.h>
 
 #define BUFFSIZE 2048
-#define CMDSIZE 128
+#define CMDSIZE 2048
 
 #define EXITCMD "exit\n"
 #define LISTCMD "list\n"
