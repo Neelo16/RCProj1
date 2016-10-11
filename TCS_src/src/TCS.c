@@ -8,13 +8,20 @@
 #include <stdio.h>
 #include "TCS.h"
 #include "queue.h"
+#include "util.h"
 
 
 void getBufferLanguage(char buffer[], char language2[])
 {
-    int i, aux = 0;
+	/* Gets language from buffer. language2 will have the result and th errors 
+	to be sent*/
+
+    int i, aux = 0; 
 
     char *language;
+	
+	/*counts the number of spaces received in the buffer to check if it has 
+	the right format*/
 
     for(i = 0 ; buffer[i] != '\0'; i++)
     {
@@ -23,8 +30,12 @@ void getBufferLanguage(char buffer[], char language2[])
     }
 
     language = strtok(buffer, " ");
-
-    /* The format is not formulated correcly if the user
+	if(language == NULL){
+		fprintf(stderr, "User sent an invalid command\n");
+		return;	
+	}
+ 
+    /* The format is not formulated correcly if the serverFD
      * doesnt add any language or adds more than one.*/
     if((aux == 0 || aux > 1)&& !strcmp(language, "UNQ"))
         strcpy(language2, "UNR ERR\n");
@@ -39,14 +50,14 @@ void getBufferLanguage(char buffer[], char language2[])
     {
         language = strtok(NULL, " \n"); /*language*/
         strcpy(language2,language);
-
     }
 }
 
 void getTRSInfo(trs_list list, char* language, char repply[])
 {
-    trs_item trs = (trs_item) malloc(sizeof(struct trsItem));
-
+	/*Receives the language requested by the serverFD and finds the TRS server*/
+    trs_item trs = (trs_item) safeMalloc(sizeof(struct trsItem));
+	
     int repplyLen = 0;
 
     trs = findTRS(list, language);
@@ -58,6 +69,7 @@ void getTRSInfo(trs_list list, char* language, char repply[])
     	destroyTRS(trs);
         strcpy(repply, "UNR EOF\n");
     }
+	/* The trs was found */
     else
     {
     	repplyLen = sprintf(repply, "UNR ");
@@ -73,7 +85,7 @@ void checkTRS(trs_list list, char buffer[], char repply[])
     char* ip;
     char* port;
     
-    trs_item trs = (trs_item) malloc(sizeof(struct trsItem));
+    trs_item trs = (trs_item) safeMalloc(sizeof(struct trsItem));
 
     getBufferLanguage(buffer, language);
     
@@ -110,12 +122,14 @@ void checkTRS(trs_list list, char buffer[], char repply[])
 
 void stopTranslating(trs_list list, char buffer[], char repply[])
 {
-    char language[MAX];
-    trs_item trs = (trs_item)malloc(sizeof(struct trsItem));
+	/* When TRS stopts translating language*/
 
-    getBufferLanguage(buffer, language);
+    char language[MAX];
+    trs_item trs = (trs_item)safeMalloc(sizeof(struct trsItem));
+
+    getBufferLanguage(buffer, language); /* gets language from buffer */
     
-    if(!strcmp(language, "SUR ERR\n"))
+    if(!strcmp(language, "SUR ERR\n")) /* error case sends status not ok*/
     {
         strcpy(repply, "SUR NOK\n");
 
@@ -123,35 +137,35 @@ void stopTranslating(trs_list list, char buffer[], char repply[])
     }
     else
     {
-        trs = findTRS(list, language);
+        trs = findTRS(list, language); /* tries to find trs in the tres list*/
 
         strcpy(repply, "SUR OK\n");
 
         if(trs == NULL)
             destroyTRS(trs);
         else
-            removeTRS(list, language);
+            removeTRS(list, language); /*if it is found removes it from the list */
     }
 }
 
-void finishProgram(int* user, trs_list list)
+void finishProgram(int* serverFD, trs_list list, const char* error)
 {
-	if(close(*user) == -1)
+	if(close(*serverFD) == -1)
 		perror("An error occurred on close");
 	destroyList(list);
+	exitMsg(error);
 }
 
 int main(int argc, const char **argv)  {
 
-    int user = 0; /* socket */
     struct sockaddr_in serveraddr, clientaddr;
     unsigned int addrlen;
-    int port, error;
+	int serverFD = 0; /* socket fd */
+    int port, error, retval;
+    int received = 0;
     char buffer[MAX];
 	char repply[MAX];
     char language[MAX];
-    int received = 0;
-    int retval;
     trs_list server_list;
     fd_set rfds;
     FD_ZERO(&rfds);
@@ -160,10 +174,7 @@ int main(int argc, const char **argv)  {
 
 	/* Create Server List */
 	server_list = createList(); 
-    /*
-    addTRSItem(server_list, createTRS("Portugues", "13245", 59000));
-    addTRSItem(server_list, createTRS("Coreano", "13242", 59020));
-    */
+
     /*  Port assignment */
     if( argc > 2 && !strcmp(argv[1], "-p"))
         port = atoi(argv[1]);
@@ -171,111 +182,90 @@ int main(int argc, const char **argv)  {
         port = PORT;
 
 
-    /* USER */
-    
-    user = socket(AF_INET, SOCK_DGRAM,0);
+    /* Server */
+	
+	/* Initialization of the socket with UDP protocol*/    
+    serverFD = socket(AF_INET, SOCK_DGRAM,0);
 
-    if(user == -1){
-    	perror("An error occurrer on socket");
-    	return EXIT_FAILURE;
-    }
+    if(serverFD == -1)
+    	exitMsg("An error occurrer on socket");
 
     memset((void*)&serveraddr, (int)'\0',sizeof(serveraddr));
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
     serveraddr.sin_port = htons(port);
     
-    error = bind(user, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
+    error = bind(serverFD, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
 
-    if(error == -1){
-    	perror("An error occurrer an error on bind");
-    	return EXIT_FAILURE;
-    }
+    if(error == -1)
+    	exitMsg("An error occurrer an error on bind");
+
 
     addrlen = sizeof(clientaddr);
-
+	
     while(1)
     {
     	FD_ZERO(&rfds);
         FD_SET(0, &rfds);
-    	FD_SET(user, &rfds);
+    	FD_SET(serverFD, &rfds);
 
-    	retval = select(user+1, &rfds, NULL, NULL, NULL);
+    	retval = select(serverFD+1, &rfds, NULL, NULL, NULL);
 
-    	if(retval == -1) {
-    		perror("Occurrer an error on select");
-    		finishProgram(&user, server_list);
-    		return EXIT_FAILURE;
-    	}
-    	else if( FD_ISSET(user, &rfds))
+    	if(retval == -1)
+    		finishProgram(&serverFD, server_list, "An error occurred on select.");
+
+    	else if( FD_ISSET(serverFD, &rfds))
     	{
     		
-	        received = recvfrom(user, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientaddr, &addrlen);
+	        received = recvfrom(serverFD, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientaddr, &addrlen);
 	        
 	        if(received == -1)
-	        {
-	        	perror("An error occurred on recvfrom");
-	            finishProgram(&user, server_list);
-	            return EXIT_FAILURE;
-	        }
-
+	            finishProgram(&serverFD, server_list, "An error occurred on recvfrom");
+	      
+			
+            
 	        *(buffer + received) = '\0';
 	        printf("%s",buffer);
 
 	        if(!strncmp(buffer, "ULQ", 3))
 	        {
-	            if(strlen(buffer) > 4)
+	            if(strlen(buffer) > 4) /* If the format of the buffer is not correct. */
 	            {
 	                strcpy(repply,"URR\n");
-	                error = sendto(user, repply, 4, 0, (struct sockaddr*) &clientaddr, addrlen);
+	                error = sendto(serverFD, repply, 4, 0, (struct sockaddr*) &clientaddr, addrlen);
 
 	                if(error == -1)
-	                {
-	                	perror("An error occurred on sendto");
-	                	finishProgram(&user, server_list);
-	                	return EXIT_FAILURE;
-	                }
+	                	finishProgram(&serverFD, server_list, "An error occurred on sendto");
+
 	            }
-	            else if( sizeList(server_list) == 0)
+	            else if( sizeList(server_list) == 0) /*There are no TRS in the list*/
 	            {
 	                strcpy(repply,"ULR EOF\n");
-	                error = sendto(user, repply, 8, 0, (struct sockaddr*) &clientaddr, addrlen);
+	                error = sendto(serverFD, repply, 8, 0, (struct sockaddr*) &clientaddr, addrlen);
 
 	                if(error == -1)
-	                {
-	                	perror("An error occurred on sendto");
-	                	finishProgram(&user, server_list);
-	                	return EXIT_FAILURE;
-	                }
+	                	finishProgram(&serverFD, server_list, "An error occurred on sendto");
 	            }
 	            else
 	            {
-	                listLanguages(server_list, repply);
-	                error = sendto(user, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);
+	                listLanguages(server_list, repply); /* gets the languages in the TRS list*/
+	                error = sendto(serverFD, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);
 
 	                if(error == -1)
-	                {
-	                	perror("An error occurred on sendto");
-	                	finishProgram(&user, server_list);
-	                	return EXIT_FAILURE;
-	                }
+	                	finishProgram(&serverFD, server_list, "An error occurred on sendto");
 	            }
 	        }
 	        else if(!strncmp(buffer, "UNQ", 3))
 	        {
-	            /* gets language requested from the user */
+	            /* gets language requested from the serverFD */
 	            getBufferLanguage(buffer, language); 
 	            
 	            /* looks for the language in trs list and returs its info */
 	            getTRSInfo( server_list, language, repply);
-	            error = sendto(user, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);
+	            error = sendto(serverFD, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);
 
 	            if(error == -1)
-	            {
-	              	perror("An error occurred on sendto");
-	              	finishProgram(&user, server_list);
-	                return EXIT_FAILURE;
-	            }
+	              	finishProgram(&serverFD, server_list, "An error occurred on sendto");
 	            
 	        }
 	        else if(!strncmp( buffer, "SRG", 3))
@@ -283,15 +273,12 @@ int main(int argc, const char **argv)  {
 	            /*confirms if the trs is in server_list*/
 	            checkTRS(server_list, buffer, repply);
 
-	            /*sends its status to TRS*/
-	            error = sendto(user, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);
+	            /*sends status to TRS*/
+	            error = sendto(serverFD, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);
 
 	            if(error == -1)
-	            {
-	              	perror("An error occurred on sendto");
-	              	finishProgram(&user, server_list);
-	                return EXIT_FAILURE;
-	            }
+	              	finishProgram(&serverFD, server_list, "An error occurred on sendto");
+
 	        }
 	        else if(!strncmp( buffer, "SUN", 3))
 	        {
@@ -301,18 +288,14 @@ int main(int argc, const char **argv)  {
 
 	            stopTranslating(server_list, buffer, repply);
 	            
-	            error = sendto(user, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);
+	            error = sendto(serverFD, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);
 
 	            if(error == -1)
-	            {
-	              	perror("An error occurred on sendto");
-	              	finishProgram(&user, server_list);
-	                return EXIT_FAILURE;
-	            }    
+	              	finishProgram(&serverFD, server_list, "An error occurred on sendto");
 	            
 	        }
 	    }
-	    else if(FD_ISSET(0, &rfds))
+	    else if(FD_ISSET(0, &rfds)) /* exit command*/
 	   	{
 	   		scanf("%s", repply);
 
@@ -322,7 +305,7 @@ int main(int argc, const char **argv)  {
 
     }
 
-    finishProgram(&user, server_list);
+    close(serverFD);
    
     return EXIT_SUCCESS;
 

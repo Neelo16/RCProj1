@@ -1,13 +1,14 @@
-#include "queue.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "util.h"
+#include "queue.h"
 
 #define MAX 2048
 
 trs_item createTRS(const char *language, const char *ip, unsigned int port)
 {
-    trs_item trs = (trs_item) malloc(sizeof(struct trsItem));
+    trs_item trs = (trs_item) safeMalloc(sizeof(struct trsItem));
     
     trs->port = port;
     if(strlen(language) <= 20 && strlen(ip) <= 20)
@@ -43,7 +44,7 @@ void destroyTRS(trs_item trs)
 
 node_link createNode(trs_item trs)
 {
-    node_link node = (node_link) malloc(sizeof(struct q_node ));
+    node_link node = (node_link) safeMalloc(sizeof(struct q_node ));
 
     node->item = trs;
     node->next = NULL;
@@ -59,7 +60,7 @@ void destroyNode(node_link node)
 
 trs_list createList()
 {
-    trs_list list = (trs_list) malloc(sizeof(struct trsList));
+    trs_list list = (trs_list) safeMalloc(sizeof(struct trsList));
 
     list->head = NULL;
     list->size = 0;
