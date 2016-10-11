@@ -151,8 +151,8 @@ void handle_requests(int TRS_port) {
         /* Ensure we receive at least enough bytes to determine if we have a valid request   */
         /* No way to know if we received the whole thing yet as we don't know if it's a file */
         /* or a list of words. */
-        while (bytes_read < strlen("TRQ f")) {
-            bytes_read += read(client_socket, buffer, sizeof(buffer));
+        while (bytes_read < sizeof("TRQ f")) {
+            bytes_read += read(client_socket, buffer, sizeof("TRQ f") - bytes_read);
         }
 
         argument = strtok(buffer, " ");
@@ -195,10 +195,53 @@ void handle_requests(int TRS_port) {
             } else if (!strcmp(argument, "f")) {
                 /* TODO save data to a file */
                 /* TODO make sure we received everything we need */
-                char *filename = strtok(NULL, " ");
+                FILE *new_file = NULL;
+                FILE *old_file = NULL;
+                char filename[BUFFER_SIZE];
                 char new_filename[BUFFER_SIZE];
                 size_t new_file_size = 0;
-                FILE *new_file = get_image_translation(filename, new_filename, &new_file_size);
+                size_t old_file_size = 0;
+                bytes_read = 0;
+
+                memset(filename, '\0', sizeof(filename));
+                memset(new_filename, '\0', sizeof(new_filename));
+                memset(buffer, '\0', sizeof(buffer));
+
+                while (filename[bytes_read] != ' ') {
+                    bytes_read += read(client_socket, filename + bytes_read, 1);
+                }
+                filename[bytes_read] = '\0';
+
+                bytes_read = 0;
+                while (buffer[bytes_read] != ' ') {
+                    bytes_read += read(client_socket, buffer + bytes_read, 1);
+                }
+                buffer[bytes_read] = '\0';
+                old_file_size = atoi(buffer);
+
+                old_file = fopen(filename, "wb");
+                if(old_file != NULL){
+                    while(1){
+                        int received = read(client_socket, buffer, sizeof(buffer) - bytes_read);
+                        if(!received){
+                            perror("Erro");
+                            return;
+                        }
+                        bytes_read += received;
+                        bytes_written = 0;
+                        while (bytes_written < received) {
+                            bytes_written += fwrite(buffer + bytes_written, 1, received + bytes_written, old_file);
+                        }
+                        if(bytes_read >= old_file_size)
+                            break;
+                    }
+                    fclose(old_file);
+                    printf("received file %s\n     %ld Bytes\n",filename,old_file_size);
+                }
+                else {
+                    printf("Error trying to download this file: %s\n",filename);
+                }
+                new_file = get_image_translation(filename, new_filename, &new_file_size);
                 if (new_file == NULL) {
                     char const *response = "TRR NTA\n";
                     write(client_socket, response, strlen(response));
