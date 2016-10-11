@@ -212,8 +212,8 @@ void handle_requests(int TRS_port) {
                     if (bytes_read && filename[bytes_read - 1] == ' ')
                         break;
                 }
-                filename[bytes_read] = '\0';
-
+                filename[bytes_read-1] = '\0';
+                printf("Filename:%s|\n",filename);
                 bytes_read = 0;
                 while (1) {
                     bytes_read += read(client_socket, buffer + bytes_read, 1);
@@ -294,13 +294,10 @@ int get_translation(char const *untranslated, char *translated, char const *file
     int got_translation = 0;
     memset((void*)buffer, '\0', sizeof(buffer));
     while (ftell(translation_file) != SEEK_END ) {
-        fscanf(translation_file, "%s %s\n", buffer, translated);
+        fscanf(translation_file, "%s %s", buffer, translated);
         if (!strcmp(buffer, untranslated)) {
             got_translation = 1;
             break;
-        }
-        else {
-            printf("%d\n", strcmp(buffer, untranslated));
         }
     }
     fclose(translation_file);
