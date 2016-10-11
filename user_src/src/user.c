@@ -6,20 +6,9 @@
 #include <string.h>
 #include <stdio.h>
 #include "user.h"
+#include "util.h" /**/
 #include <errno.h>
 
-/* HEYYYYYYYYYYYYYYYYYYYYYYY PUT ME IN UTIL.C *********************************/
-void exitMsg(const char *msg){
-	perror(msg);
-	exit(1);
-}
-
-void *safeMalloc(size_t size){
-	void *answer;
-	if((answer = malloc(size)) == NULL)
-		exitMsg("Error in safeMalloc");
-	return answer;
-}
 
 void cleanUDP(UDPHandler_p handler){
 	close(handler->socket);
@@ -39,7 +28,7 @@ int safeSendUDP(UDPHandler_p TCSHandler, const char *toSend, unsigned int toSend
 		if (sendto(TCSHandler->socket, toSend, toSendLen , 0 , (struct sockaddr *) &TCSHandler->client, TCSHandler->clientLen) == -1)
 			exitMsg("Error sending message");
 		if ((received = recvfrom(TCSHandler->socket, TCSHandler->buffer, BUFFSIZE-1, 0, (struct sockaddr *) &TCSHandler->client, &TCSHandler->clientLen)) == -1){
-			if(errno != ETIMEDOUT && errno != EAGAIN) /* FIXME */
+			if(errno != ETIMEDOUT && errno != EAGAIN)
 				exitMsg("Error receiving messages");
 		}
 		else
@@ -82,8 +71,10 @@ int list(UDPHandler_p TCSHandler, char ***languages){
 	int i;
 
 	/* Send User List Query */
-	if(!safeSendUDP(TCSHandler,SENDULQ,SENDULQSIZE))
-		return 0; /* FIXME */
+	if(!safeSendUDP(TCSHandler,SENDULQ,SENDULQSIZE)){
+		printf("Couldn't send request to TCS server.\n");
+		return 0;
+	}
 	langNumber = getLanguages(TCSHandler,languages);
 
 	if(!langNumber)
@@ -201,7 +192,7 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 			received = sprintf(TCSHandler->buffer,"%s %s\n","UNQ",languages[langName]);
 
 			if(!safeSendUDP(TCSHandler,TCSHandler->buffer,received))
-				return;  /*FIXME */
+				return;
 			if(!parseTCSUNR(TCSHandler,&ip, &port)) return;
 			good = TCPConnection(TRSHandler, ip, port, languages[langName]);
 		}
@@ -444,8 +435,8 @@ int main(int argc, char **argv){
     	}
     }
     if(defaultP){
-    	/*printf("Using default port: %d\n",DEFAULTPORT);*/
-    	TCSHandler->client.sin_port = htons(DEFAULTPORT);
+    	/*printf("Using default port: %d\n",PORT);*/
+    	TCSHandler->client.sin_port = htons(PORT);
     }
    	if(defaultA){
    		/*printf("Using default addr: %s\n",DEFAULTADDR);*/

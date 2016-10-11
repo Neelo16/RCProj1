@@ -11,9 +11,7 @@
 #define LISTCMD "list\n"
 #define REQCMD  "request "
 
-#define GROUPNUMBER 0
 #define DEFAULTADDR "127.0.0.1"
-#define DEFAULTPORT 58000+GROUPNUMBER
 
 #define SENDULQ "ULQ\n"
 #define SENDULQSIZE strlen(SENDULQ)
@@ -39,7 +37,6 @@ void cleanUDP(UDPHandler_p handler);
 void cleanTCP(TCPHandler_p handler);
 int safeSendUDP(UDPHandler_p TCSHandler, const char *toSend, unsigned int toSendLen);
 int TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, const char *language);
-void exitMsg(const char *msg);
 void request(UDPHandler_p TCSHandler, TCPHandler_p TRSHandler, char *cmd, char **languages, int langNumber);
 int list(UDPHandler_p TCSHandler, char ***languages);
 int getLanguages(UDPHandler_p TCSHandler, char ***languages);
