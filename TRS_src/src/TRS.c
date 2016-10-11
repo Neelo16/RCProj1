@@ -207,22 +207,28 @@ void handle_requests(int TRS_port) {
                 memset(new_filename, '\0', sizeof(new_filename));
                 memset(buffer, '\0', sizeof(buffer));
 
-                while (filename[bytes_read] != ' ') {
+                while (1) {
                     bytes_read += read(client_socket, filename + bytes_read, 1);
+                    if (bytes_read && filename[bytes_read - 1] == ' ')
+                        break;
                 }
                 filename[bytes_read] = '\0';
 
                 bytes_read = 0;
-                while (buffer[bytes_read] != ' ') {
+                while (1) {
                     bytes_read += read(client_socket, buffer + bytes_read, 1);
+                    if (bytes_read && buffer[bytes_read - 1] == ' ')
+                        break;
                 }
                 buffer[bytes_read] = '\0';
                 old_file_size = atoi(buffer);
 
                 old_file = fopen(filename, "wb");
+                bytes_read = 0;
+
                 if(old_file != NULL){
                     while(1){
-                        int received = read(client_socket, buffer, sizeof(buffer) - bytes_read);
+                        int received = read(client_socket, buffer, sizeof(buffer));
                         if(!received){
                             perror("Erro");
                             return;
@@ -230,7 +236,7 @@ void handle_requests(int TRS_port) {
                         bytes_read += received;
                         bytes_written = 0;
                         while (bytes_written < received) {
-                            bytes_written += fwrite(buffer + bytes_written, 1, received + bytes_written, old_file);
+                            bytes_written += fwrite(buffer + bytes_written, 1, received - bytes_written, old_file);
                         }
                         if(bytes_read >= old_file_size)
                             break;
@@ -241,7 +247,9 @@ void handle_requests(int TRS_port) {
                 else {
                     printf("Error trying to download this file: %s\n",filename);
                 }
+                printf("Going to get the translation for %s now\n", filename);
                 new_file = get_image_translation(filename, new_filename, &new_file_size);
+                printf("Sending %s next\n", new_filename);
                 if (new_file == NULL) {
                     char const *response = "TRR NTA\n";
                     write(client_socket, response, strlen(response));
@@ -260,6 +268,8 @@ void handle_requests(int TRS_port) {
                         response_size = fread(response, 1, BUFFER_SIZE, new_file);
                         bytes_written += write(client_socket, response, response_size);
                     }
+
+                    puts("sent");
 
                     fclose(new_file);
                 }
@@ -289,6 +299,9 @@ int get_translation(char const *untranslated, char *translated, char const *file
             got_translation = 1;
             break;
         }
+        else {
+            printf("%d\n", strcmp(buffer, untranslated));
+        }
     }
     fclose(translation_file);
     return got_translation;
@@ -296,9 +309,11 @@ int get_translation(char const *untranslated, char *translated, char const *file
 
 FILE *get_image_translation(char const *filename, char *new_filename, size_t *new_file_size) {
     FILE *translated_file = NULL;
+    puts("In image translation");
     if (!get_translation(filename, new_filename, "file_translation.txt")) {
         return NULL;
     }
+    puts("Got translation");
     translated_file = fopen(new_filename, "rb");
     fseek(translated_file, 0, SEEK_END);
     *new_file_size = ftell(translated_file);
