@@ -259,43 +259,39 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 		puts("");
 	}
 	else if(c == 'f'){
-		file = fopen(filename,"rb");
-		if(!file){
-			printf("File %s does not exist\n",filename);
-			return;
-		}
-
-		if(fseek(file, 0L, SEEK_END) == -1){
-			perror("Error reading file");
-			return;
-		}
-		received = sprintf(TRSHandler->buffer, "%s %c %s %ld ","TRQ",'f',filename,ftell(file));
-		if(received < 0){
-			printf("Error setting up data to send\n");
-			return;
-		}
-		printf("     %ld Bytes to transmit\n",ftell(file));
-		rewind(file);
-
-		write(TRSHandler->clientFD,TRSHandler->buffer,received);
-
+        int filesize = 0;
+        int written = 0;
+        file = fopen(filename,"rb");
+        if(!file){
+            printf("File %s does not exist\n",filename);
+            return;
+        }
+ 
+        if(fseek(file, 0L, SEEK_END) == -1){
+            perror("Error reading file");
+            return;
+        }
+        received = sprintf(TRSHandler->buffer, "%s %c %s %ld ","TRQ",'f',filename,ftell(file));
+        if(received < 0){
+            printf("Error setting up data to send\n");
+            return;
+        }
+        filesize = ftell(file);
+        printf("     %ld Bytes to transmit\n",filesize);
+        rewind(file);
+ 
+        write(TRSHandler->clientFD,TRSHandler->buffer,received);
+ 
+        i = 0;
+        while (written < filesize) {
+            int read = fread(TRSHandler->buffer, 1, BUFFSIZE, file);
+            written += write(TRSHandler->clientFD, TRSHandler->buffer, read);
+        }
+        c = '\n';
+        write(TRSHandler->clientFD,&c,1);
+        fclose(file);
 		i = 0;
-		while((c = getc(file)) != EOF){
-			*(TRSHandler->buffer+i) = c;
-			if(i == BUFFSIZE-1){
-				i = 0;
-				write(TRSHandler->clientFD,TRSHandler->buffer,BUFFSIZE);
-			}
-			else
-				i++;
-		}
-		if(i > 0)
-			write(TRSHandler->clientFD,TRSHandler->buffer,i);
-		c = '\n';
-		write(TRSHandler->clientFD,&c,1);
-		fclose(file);
-		i = 0;
-		
+		printf("receiving now...\n");
 		if(checkReceive(TRSHandler,6))/*TRR f */
 			return;
 		if(!strcmp(TRSHandler->buffer,"TRR NTA\n")){
@@ -327,7 +323,6 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 		*(TRSHandler->buffer+i) = '\0';
 		size = atol(TRSHandler->buffer); 
 
-		i = 0;
 		if(file != NULL){
 			while(1){
 				received = read(TRSHandler->clientFD,TRSHandler->buffer,BUFFSIZE);
@@ -336,10 +331,6 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 					return;
 				}
 				total += received;
-				if(i != total){
-					printf("%d\n",total);
-					i = total;
-				}
 				received = total > size? received-size+total: received;
 				fwrite(TRSHandler->buffer,1,received,file);
 				if(total >= size)
