@@ -78,11 +78,17 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
     gethostname(buffer, BUFFER_SIZE);
     TRS_ptr = gethostbyname(buffer);
 
-    if ((TCS_ptr = gethostbyname(TCS_name)) == NULL || TRS_ptr == NULL) {
+    if (TRS_ptr == NULL) {
         perror("Failed to connect to TCS");
         return 0;
     }
+
     TRS_addr = (struct in_addr*) TRS_ptr->h_addr_list[0];
+
+    if ((TCS_ptr = gethostbyname(TCS_name)) == NULL) {
+        perror("Failed to connect to TCS");
+        return 0;
+    }
 
     /* Prepare the message we need to send to register the language */
     memset((void*)buffer, 0, sizeof(buffer));
