@@ -85,14 +85,14 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
 
     TRS_addr = (struct in_addr*) TRS_ptr->h_addr_list[0];
 
+    /* Prepare the message we need to send to register the language */
+    memset((void*)buffer, 0, sizeof(buffer));
+    sprintf(buffer, "%s %s %s %u\n", deregister ? "SUN" : "SRG", language, inet_ntoa(*TRS_addr), TRS_port);
+
     if ((TCS_ptr = gethostbyname(TCS_name)) == NULL) {
         perror("Failed to connect to TCS");
         return 0;
     }
-
-    /* Prepare the message we need to send to register the language */
-    memset((void*)buffer, 0, sizeof(buffer));
-    sprintf(buffer, "%s %s %s %u\n", deregister ? "SUN" : "SRG", language, inet_ntoa(*TRS_addr), TRS_port);
 
     memset((void*)&TCS_addr, 0, sizeof(TCS_addr));
     TCS_addr.sin_family = AF_INET;
