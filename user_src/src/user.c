@@ -325,13 +325,12 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 
 		if(file != NULL){
 			while(1){
-				received = read(TRSHandler->clientFD,TRSHandler->buffer,BUFFSIZE);
+				received = read(TRSHandler->clientFD,TRSHandler->buffer,MIN(BUFFSIZE, size - total));
 				if(!received){
 					perror("Erro");
 					return;
 				}
 				total += received;
-				received = total > size? received-size+total: received;
 				fwrite(TRSHandler->buffer,1,received,file);
 				if(total >= size)
 					break;
