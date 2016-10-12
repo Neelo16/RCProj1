@@ -9,6 +9,10 @@
 
 #include "TRS.h"
 
+/* FIXME when you add util.c here */
+
+#define MIN(A,B) (A < B ? A : B)
+
 int main(int argc, char *argv[])
 {
     const char *language = NULL;
@@ -228,7 +232,7 @@ void handle_requests(int TRS_port) {
 
                 if(old_file != NULL){
                     while(1){
-                        int received = read(client_socket, buffer, sizeof(buffer));
+                        int received = read(client_socket, buffer, MIN(sizeof(buffer), old_file_size - bytes_read));
                         if(!received){
                             perror("Erro");
                             return;
@@ -269,7 +273,8 @@ void handle_requests(int TRS_port) {
                         bytes_written += write(client_socket, response, response_size);
                     }
 
-                    puts("sent");
+                    while (write(client_socket, "\n", 1) != 1)
+                        ;
 
                     fclose(new_file);
                 }
@@ -289,12 +294,16 @@ BAD_FORMAT:
 }
 
 int get_translation(char const *untranslated, char *translated, char const *filename) {
-    FILE *translation_file = fopen(filename, "r");
+    FILE *translation_file = fopen(filename, "r"); /* FIXME CHECK NULL*/
     char buffer[32];
     int got_translation = 0;
+    size_t unprocessed_bytes = 0;
+    fseek(translation_file, 0, SEEK_END);
+    unprocessed_bytes = ftell(translation_file);
+    rewind(translation_file);
     memset((void*)buffer, '\0', sizeof(buffer));
-    while (ftell(translation_file) != SEEK_END ) {
-        fscanf(translation_file, "%s %s", buffer, translated);
+    while (unprocessed_bytes > 0) {
+        unprocessed_bytes -= fscanf(translation_file, "%s %s", buffer, translated);
         if (!strcmp(buffer, untranslated)) {
             got_translation = 1;
             break;
@@ -314,7 +323,7 @@ FILE *get_image_translation(char const *filename, char *new_filename, size_t *ne
     translated_file = fopen(new_filename, "rb");
     fseek(translated_file, 0, SEEK_END);
     *new_file_size = ftell(translated_file);
-    fseek(translated_file, 0, SEEK_SET);
+    rewind(translated_file);
     return translated_file;
 }
 
