@@ -1,0 +1,5 @@
+fiber fibra
+optics optica
+money dinheiro
+program programa
+computer computador
