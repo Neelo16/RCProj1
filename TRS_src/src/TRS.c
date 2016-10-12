@@ -154,7 +154,7 @@ void handle_requests(int TRS_port) {
 
         if(FD_ISSET(TRS_socket, &input_sources)){ /* FIXME */
             struct sockaddr_in client_addr;
-            unsigned client_len;
+            unsigned client_len = puts("Accepting client");
             int client_socket = accept(TRS_socket, (struct sockaddr*)&client_addr, &client_len);
             char buffer[BUFFER_SIZE];
             size_t bytes_read = 0;
@@ -303,8 +303,11 @@ void handle_requests(int TRS_port) {
 
             sleep(5);
             close(client_socket);
-        } else if (FD_ISSET(fileno(stdin), &input_sources)) { /* FIXME */
-            continue;
+        } else if (FD_ISSET(fileno(stdin), &input_sources)) {
+            char buffer[BUFFER_SIZE];
+            puts("stdin");
+            fgets(buffer, sizeof(buffer), stdin);
+            running = strcmp(buffer, "exit\n");
         }
     }
 
