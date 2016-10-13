@@ -367,7 +367,7 @@ void handle_file_translation(int client_socket) {
     if(untranslated_file != NULL){
         while(1){
             int received = read(client_socket, buffer, MIN(sizeof(buffer), untranslated_file_size - bytes_read));
-            if(!received){
+            if(received == -1){
                 perror("Failed to receive file");
                 return;
             }

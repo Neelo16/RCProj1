@@ -333,8 +333,11 @@ int sendFile(TCPHandler_p TRSHandler, char *filename){
         return 0;
     }
 
+    printf(":)\n");
+    written = 0;
     while (written < size) {
-        while(fread(TRSHandler->buffer, 1, BUFFSIZE, file));
+    	printf("yes\n");
+        while(!fread(TRSHandler->buffer, 1, BUFFSIZE, file));
         bytes_read = safe_write(TRSHandler->clientFD, TRSHandler->buffer, 1);
         if(!bytes_read){
             printf("Lost connection with TRS\n");
@@ -342,11 +345,11 @@ int sendFile(TCPHandler_p TRSHandler, char *filename){
         }
         written += bytes_read;
     }
+    printf("no\n");
     if(!safe_write(TRSHandler->clientFD,"\n",1)){
         printf("Lost connection with TRS\n");
         return 0;
     }
-
     fclose(file);
     return 1;
 }
@@ -355,16 +358,39 @@ int recvInitialData(TCPHandler_p TRSHandler, char *filename, unsigned long int *
     int i=0;
     char c;
 
-    if(!checkReceive(TRSHandler,6))/*TRR f */
-        return 0;
-    if(!strcmp(TRSHandler->buffer,"TRR NTA\n")){
-        printf("No translation available\n");           
+    printf(":)\n");
+    if(!read_until_space(TRSHandler->clientFD,TRSHandler->buffer,4)){/*TRR f filename size */
+        printf("Lost connection with TRS\n");
         return 0;
     }
-    else if(!strcmp(TRSHandler->buffer,"TRR ERR\n")){
-        printf("TRS probably didnt receive the correct data\n");
-        return 0;     
+    printf("He sent something\n");
+
+    /* to be read: f filename size */
+    if(strcmp(TRSHandler->buffer,"TRR")){
+    	printf("Bad answer from TRS\n");
+    	return 0;
     }
+
+    while(i != 2){
+    	i += read(TRSHandler->clientFD,TRSHandler->buffer,2);
+    	if(!i){
+    		printf("Lost connection with TRS\n");
+    		return 0;
+    	}
+    	printf(":)\n");
+    }
+    if(*TRSHandler->buffer != 'f'){
+    	if(!read_until_newline(TRSHandler->clientFD,TRSHandler->buffer+2,BUFFSIZE))
+    		printf("Lost connection with TRS\n");
+    	else if(!strcmp(TRSHandler->buffer,"NTA\n"))
+        	printf("No translation available\n");           
+        else if(!strcmp(TRSHandler->buffer,"ERR\n"))
+        	printf("TRS ERR received. Please request translation again\n");
+        else
+        	printf("An error occured while receiving file translation. Please repeat the request\n");
+        return 0;
+    }
+
     while(1){ /* Receive filename */
         read(TRSHandler->clientFD,&c,1);
         if(c == ' ')
@@ -397,9 +423,9 @@ void handleFileTranslation(TCPHandler_p TRSHandler, char *filename){
     if(!sendFile(TRSHandler,filename))
         return;
 
-    if(!recvInitialData(TRSHandler,filename,&size)) /* TRR filename size */
+    if(!recvInitialData(TRSHandler,filename,&size)) /* TRR f filename size */
         return;
-    
+
     file = fopen(filename, "wb");
     if(file == NULL){
         printf("Error trying to download this file: %s\n",filename);
@@ -472,10 +498,6 @@ int TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, const
     /* Configure settings of the TCP socket */
     tv.tv_sec = 5;
     tv.tv_usec = 0;
-    if (setsockopt(TRSHandler->clientFD, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0)
-        exitMsg("Error in setsockopt");
-    if (setsockopt(TRSHandler->clientFD, SOL_SOCKET, SO_SNDTIMEO,&tv,sizeof(tv)) < 0)
-        exitMsg("Error in setsockopt");
 
     TRSHandler->server.sin_family = AF_INET;
     TRSHandler->serverSize = sizeof(TRSHandler->server);
@@ -489,9 +511,13 @@ int TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, const
 
     strcpy(TRSHandler->language,language);
     if(connect(TRSHandler->clientFD, (struct sockaddr *) &TRSHandler->server, TRSHandler->serverSize)){
-        printf("Couldn't connect to TRS\n");
+        printf("Could not connect to TRS\n");
         return 0;
     }
+	if (setsockopt(TRSHandler->clientFD, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0)
+		exitMsg("Error in setsockopt");
+	if (setsockopt(TRSHandler->clientFD, SOL_SOCKET, SO_SNDTIMEO,&tv,sizeof(tv)) < 0)
+		exitMsg("Error in setsockopt");
     return 1;
 }
 
