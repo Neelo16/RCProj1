@@ -267,3 +267,20 @@ void report_invalid_request(int client_socket) {
         safe_write(client_socket, "TRR ERR\n", sizeof("TRR ERR"));
     }
 }
+
+char get_request_type(int client_socket) {
+    char buffer[BUFFER_SIZE];
+    int bytes_read = 0;
+    memset((void*)buffer, '\0', sizeof(buffer));
+    if (!read_until_space(client_socket, buffer, sizeof(buffer)) || strcmp(buffer, "TRQ")) {
+        report_invalid_request(client_socket);
+        return '\0';
+    }
+
+    if (!read_until_space(client_socket, buffer, sizeof(buffer)) || (buffer[0] != 't' && buffer[0] != 'f')) {
+        report_invalid_request(client_socket);
+        return '\0';
+    }
+    return *buffer;
+}
+
