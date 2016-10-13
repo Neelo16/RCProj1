@@ -1,5 +1,5 @@
 fiber fibra
-optics optica
+optic optica
 money dinheiro
 program programa
 computer computador
