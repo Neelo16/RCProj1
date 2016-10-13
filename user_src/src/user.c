@@ -175,11 +175,11 @@ int checkReceive(TCPHandler_p TRSHandler, int toReceive){
         received= read(TRSHandler->clientFD,TRSHandler->buffer+total,toReceive);
         if(received == -1){
             printf("Couldnt receive enough data\n");
-            return -1;
+            return 0;
         }
         total += received;
     }
-    return 0;
+    return 1;
 }
 
 int sendUNQ(TCPHandler_p TRSHandler, UDPHandler_p TCSHandler, char **languages, int langName, char **ip, unsigned int *port){
@@ -247,17 +247,179 @@ char parseRequest(char *cmd, char *filename, char **words,int *langName, int *N)
     return c;
 }
 
-void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **languages, int langNumber){
-    char *words[10];    
-    int i = 0,received = 0;
-    int langName,N=0;
-    char filename[100];
-    char *part,c;
-    char *ip = NULL;
-    unsigned int port;
-    long int size = 0;
+void printWordsReceived(char *buffer){
+    char *part;
+    int N,i;
+    part = strtok(buffer," ");
+    part = strtok(NULL," ");
+    part = strtok(NULL," ");
+    N = atoi(part);
+    for(i = 0; i < N; i++){
+        part = strtok(NULL," ");
+        if(part == NULL){
+            printf("TRS said he would send %d words but he only sent %d\n",N,i);
+            return;
+        }
+        printf(" %s",part);
+    }
+    puts("");
+}
+
+void handleTextTranslation(TCPHandler_p TRSHandler, char **words, char *ip,int N){
+    int processedBytes,i,total=0;
+
+    processedBytes = sprintf(TRSHandler->buffer, "TRQ t %d",N);
+    for(i = 0; i < N; i++)
+        processedBytes += sprintf(TRSHandler->buffer+processedBytes," %s",words[i]);
+    write(TRSHandler->clientFD,TRSHandler->buffer,processedBytes);
+
+    /* *(TRSHandler->buffer) = '\0'; */
+    while(processedBytes != -1){
+        processedBytes = read(TRSHandler->clientFD,TRSHandler->buffer+total,BUFFSIZE-total-1);
+        total += processedBytes;
+        if(processedBytes && *(TRSHandler->buffer+total-1) == '\n')
+            break;
+    }
+    if(processedBytes == -1){
+        perror("Couldnt receive data from TRS");
+        return;
+    }
+
+    total = 0;
+    *(TRSHandler->buffer+processedBytes) = '\0';
+    if(!strcmp(TRSHandler->buffer,"TRR NTA\n")){
+        printf("No translation available\n");
+        return;     
+    }
+    else if(!strcmp(TRSHandler->buffer,"TRR ERR\n")){
+        printf("Too many words to translate\n");
+        return;     
+    }
+
+    /* Free some resources */
+    for(i = 0; i < N; i++)
+        if(words[i])
+            free(words[i]); 
+
+    printf("  %s:",ip);
+    printWordsReceived(TRSHandler->buffer);
+}
+
+int sendFile(TCPHandler_p TRSHandler, char *filename){
+    long unsigned int size;
+    int written=0;
+    FILE *file;
+
+
+    file = fopen(filename,"rb");
+    if(!file){
+        printf("File %s does not exist\n",filename);
+        return 0;
+    }
+
+    if(fseek(file, 0L, SEEK_END) == -1){
+        perror("Error reading file");
+        return 0;
+    }
+    written = sprintf(TRSHandler->buffer, "TRQ f %s %ld ",filename,ftell(file));
+    if(written < 0){
+        printf("Error setting up data to send\n");
+        return 0;
+    }
+    size = ftell(file);
+    printf("     %ld Bytes to transmit\n",size);
+    rewind(file);
+
+    write(TRSHandler->clientFD,TRSHandler->buffer,written);
+
+    while (written < size) {
+        int read = fread(TRSHandler->buffer, 1, BUFFSIZE, file);
+        written += write(TRSHandler->clientFD, TRSHandler->buffer, read);
+    }
+    write(TRSHandler->clientFD,"\n",1);
+    fclose(file);
+    return 1;
+}
+
+int recvInitialData(TCPHandler_p TRSHandler, char *filename, unsigned long int *size){
+    int i=0;
+    char c;
+
+    if(!checkReceive(TRSHandler,6))/*TRR f */
+        return 0;
+    if(!strcmp(TRSHandler->buffer,"TRR NTA\n")){
+        printf("No translation available\n");           
+        return 0;
+    }
+    else if(!strcmp(TRSHandler->buffer,"TRR ERR\n")){
+        printf("TRS probably didnt receive the correct data\n");
+        return 0;     
+    }
+    while(1){ /* Receive filename */
+        read(TRSHandler->clientFD,&c,1);
+        if(c == ' ')
+            break;
+        *(filename+i) = c;
+        i++;
+    }
+    *(filename+i) = '\0';
+
+    i = 0;
+    while(1){ /* Receive file size */
+        while(!read(TRSHandler->clientFD,TRSHandler->buffer+i,1));
+        if(*(TRSHandler->buffer+i) == ' ')
+            break;
+        i += 1;
+    }
+    *(TRSHandler->buffer+i) = '\0';
+    *size = atol(TRSHandler->buffer); 
+
+    return 1;
+}
+
+void handleFileTranslation(TCPHandler_p TRSHandler, char *filename){
+    unsigned long int size;
+    int processedBytes;
     int total = 0;
     FILE *file;
+
+
+    if(!sendFile(TRSHandler,filename))
+        return;
+
+    if(!recvInitialData(TRSHandler,filename,&size))
+        return;
+    
+    file = fopen(filename, "wb");
+    if(file == NULL){
+        printf("Error trying to download this file: %s\n",filename);
+        return;
+    }
+
+    while(1){
+        processedBytes = read(TRSHandler->clientFD,TRSHandler->buffer,MIN(BUFFSIZE, size - total));
+        if(!processedBytes){
+            perror("Erro");
+            return;
+        }
+        total += processedBytes;
+        fwrite(TRSHandler->buffer,1,processedBytes,file);
+        if(total >= size)
+            break;
+    }
+    printf("received file %s\n     %ld Bytes\n",filename,size);
+    fclose(file);
+        
+}
+
+void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **languages, int langNumber){
+    char *words[10];    
+    int i = 0;
+    int langName,N=0;
+    char filename[100];
+    char c;
+    char *ip = NULL;
+    unsigned int port;
 
     c = parseRequest(cmd,filename,words,&langName,&N);
     if(c == '0'){
@@ -277,136 +439,11 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
     if(!sendUNQ(TRSHandler,TCSHandler,languages,langName,&ip,&port))
         return;
 
-    if(c == 't'){
-        received = sprintf(TRSHandler->buffer, "%s %c %d","TRQ",'t',N);
-        for(i = 0; i < N; i++)
-            received += sprintf(TRSHandler->buffer+received," %s",words[i]);
-        write(TRSHandler->clientFD,TRSHandler->buffer,received);
-        total = 0;  
-        *(TRSHandler->buffer) = '\0';
-        while(received != -1){
-            received = read(TRSHandler->clientFD,TRSHandler->buffer+total,BUFFSIZE-total-1);
-            total += received;
-            if(received && *(TRSHandler->buffer+total-1) == '\n')
-                break;
-        }
-        if(received == -1){
-            perror("Couldnt receive data from TRS");
-            return;
-        }
-        total = 0;
-        *(TRSHandler->buffer+received) = '\0';
-        if(!strcmp(TRSHandler->buffer,"TRR NTA\n")){
-            printf("No translation available\n");
-            return;     
-        }
-        else if(!strcmp(TRSHandler->buffer,"TRR ERR\n")){
-            printf("Too many words to translate\n");
-            return;     
-        }
-
-        /* Free some resources */
-        for(i = 0; i < N; i++)
-            free(words[i]); 
-
-        printf("  %s:",ip);
-        part = strtok(TRSHandler->buffer," ");
-        part = strtok(NULL," ");
-        part = strtok(NULL," ");
-        N = atoi(part);
-        for(i = 0; i < N; i++){
-            part = strtok(NULL," ");
-            if(part == NULL){
-                printf("TRS said he would send %d words but he only sent %d",N,i);
-                return;
-            }
-            printf(" %s",part);
-        }
-        puts("");
-    }
-    else if(c == 'f'){
-        long int filesize = 0;
-        int written = 0;
-        file = fopen(filename,"rb");
-        if(!file){
-            printf("File %s does not exist\n",filename);
-            return;
-        }
- 
-        if(fseek(file, 0L, SEEK_END) == -1){
-            perror("Error reading file");
-            return;
-        }
-        received = sprintf(TRSHandler->buffer, "%s %c %s %ld ","TRQ",'f',filename,ftell(file));
-        if(received < 0){
-            printf("Error setting up data to send\n");
-            return;
-        }
-        filesize = ftell(file);
-        printf("     %ld Bytes to transmit\n",filesize);
-        rewind(file);
- 
-        write(TRSHandler->clientFD,TRSHandler->buffer,received);
- 
-        i = 0;
-        while (written < filesize) {
-            int read = fread(TRSHandler->buffer, 1, BUFFSIZE, file);
-            written += write(TRSHandler->clientFD, TRSHandler->buffer, read);
-        }
-        c = '\n';
-        write(TRSHandler->clientFD,&c,1);
-        fclose(file);
-        i = 0;
-        printf("receiving now...\n");
-        if(checkReceive(TRSHandler,6))/*TRR f */
-            return;
-        if(!strcmp(TRSHandler->buffer,"TRR NTA\n")){
-            printf("No translation available\n");           
-            return;
-        }
-        else if(!strcmp(TRSHandler->buffer,"TRR ERR\n")){
-            printf("Too many words to translate\n");
-            return;     
-        }
-        while(1){
-            read(TRSHandler->clientFD,&c,1);/*filename */
-            if(c == ' ')
-                break;
-            *(filename+i) = c;
-            i++;
-        }
-        *(filename+i) = '\0';
-
-        file = fopen(filename, "wb");
-        i = 0;
-        while(1){
-            while(!read(TRSHandler->clientFD,TRSHandler->buffer+i,1)); /*size */
-            printf("%c %d\n",*(TRSHandler->buffer+i),i);
-            if(*(TRSHandler->buffer+i) == ' ')
-                break;
-            i += 1;
-        }
-        *(TRSHandler->buffer+i) = '\0';
-        size = atol(TRSHandler->buffer); 
-
-        if(file != NULL){
-            while(1){
-                received = read(TRSHandler->clientFD,TRSHandler->buffer,MIN(BUFFSIZE, size - total));
-                if(!received){
-                    perror("Erro");
-                    return;
-                }
-                total += received;
-                fwrite(TRSHandler->buffer,1,received,file);
-                if(total >= size)
-                    break;
-            }
-            fclose(file);
-            printf("received file %s\n     %ld Bytes\n",filename,size);
-        }
-        else
-            printf("Error trying to download this file: %s\n",filename);
-    }
+    if(c == 't')
+        handleTextTranslation(TRSHandler,words,ip,N);
+    else
+        handleFileTranslation(TRSHandler,filename);
+        
     if(TRSHandler->clientFD)
         close(TRSHandler->clientFD);
 
