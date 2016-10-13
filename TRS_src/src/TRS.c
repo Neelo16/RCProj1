@@ -334,8 +334,8 @@ int get_translation(char const *untranslated, char *translated, char const *file
     unprocessed_bytes = ftell(translation_file);
     rewind(translation_file);
     memset((void*)buffer, '\0', sizeof(buffer));
-    while (unprocessed_bytes > 0) {
-        unprocessed_bytes -= fscanf(translation_file, "%s %s", buffer, translated);
+    while (!feof(translation_file)) {
+        fscanf(translation_file, "%s %s\n", buffer, translated);
         if (!strcmp(buffer, untranslated)) {
             got_translation = 1;
             break;
