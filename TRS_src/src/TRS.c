@@ -80,8 +80,8 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
     unsigned addrlen = sizeof(TCS_addr);
     char buffer[BUFFER_SIZE];
     int result = 0;
-    size_t bytes_sent = 0;
-    size_t bytes_received = 0;
+    unsigned long bytes_sent = 0;
+    unsigned long bytes_received = 0;
 
     gethostname(buffer, BUFFER_SIZE);
     TRS_ptr = gethostbyname(buffer);
@@ -169,8 +169,8 @@ void handle_requests(int TRS_port) {
             unsigned client_len;
             int client_socket = accept(TRS_socket, (struct sockaddr*)&client_addr, &client_len);
             char buffer[BUFFER_SIZE];
-            size_t bytes_read = 0;
-            size_t bytes_written = 0;
+            unsigned long bytes_read = 0;
+            unsigned long bytes_written = 0;
             char *argument = NULL;
 
             memset(buffer, '\0', sizeof(buffer));
@@ -228,8 +228,8 @@ void handle_requests(int TRS_port) {
                     FILE *old_file = NULL;
                     char filename[BUFFER_SIZE];
                     char new_filename[BUFFER_SIZE];
-                    size_t new_file_size = 0;
-                    size_t old_file_size = 0;
+                    unsigned long new_file_size = 0;
+                    unsigned long old_file_size = 0;
                     bytes_read = 0;
 
                     memset(filename, '\0', sizeof(filename));
@@ -285,7 +285,7 @@ void handle_requests(int TRS_port) {
                     }
                     else {
                         char response[BUFFER_SIZE];
-                        size_t response_size = sprintf(response, "TRR f %s %d ", new_filename, new_file_size);
+                        unsigned long response_size = sprintf(response, "TRR f %s %lu ", new_filename, new_file_size);
 
                         bytes_written = 0;
                         while (bytes_written < response_size)
@@ -339,7 +339,7 @@ int get_translation(char const *untranslated, char *translated, char const *file
     return got_translation;
 } 
 
-FILE *get_image_translation(char const *filename, char *new_filename, size_t *new_file_size) {
+FILE *get_image_translation(char const *filename, char *new_filename, unsigned long *new_file_size) {
     FILE *translated_file = NULL;
     puts("In image translation");
     if (!get_translation(filename, new_filename, "file_translation.txt")) {
