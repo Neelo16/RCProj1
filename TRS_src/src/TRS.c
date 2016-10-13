@@ -329,10 +329,6 @@ int get_translation(char const *untranslated, char *translated, char const *file
     FILE *translation_file = fopen(filename, "r"); /* FIXME CHECK NULL*/
     char buffer[32];
     int got_translation = 0;
-    size_t unprocessed_bytes = 0;
-    fseek(translation_file, 0, SEEK_END);
-    unprocessed_bytes = ftell(translation_file);
-    rewind(translation_file);
     memset((void*)buffer, '\0', sizeof(buffer));
     while (!feof(translation_file)) {
         fscanf(translation_file, "%s %s\n", buffer, translated);
