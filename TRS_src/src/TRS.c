@@ -335,3 +335,79 @@ void handle_text_translation(int client_socket) {
     safe_write(client_socket, response, response_len);
 }
 
+void handle_file_translation(int client_socket) {
+    FILE *untranslated_file = NULL;
+    FILE *translated_file = NULL;
+    char untranslated_filename[BUFFER_SIZE];
+    char translated_filename[BUFFER_SIZE];
+    char buffer[BUFFER_SIZE];
+    unsigned long untranslated_file_size = 0;
+    unsigned long translated_file_size = 0;
+    size_t bytes_read = 0;
+    size_t bytes_written = 0;
+
+    if (!read_until_space(client_socket, untranslated_filename, sizeof(untranslated_filename))) {
+        report_invalid_request(client_socket);
+        return;
+    }
+
+    puts(untranslated_filename); // FIXME
+
+    if (!read_until_space(client_socket, buffer, sizeof(buffer))) {
+        report_invalid_request(client_socket);
+        return;
+    }
+    
+    untranslated_file_size = atoi(buffer);
+    printf("%lu\n", untranslated_file_size); // FIXME
+
+    untranslated_file = fopen(untranslated_filename, "wb");
+    bytes_read = 0;
+
+    if(untranslated_file != NULL){
+        while(1){
+            int received = read(client_socket, buffer, MIN(sizeof(buffer), untranslated_file_size - bytes_read));
+            if(!received){
+                perror("Failed to receive file");
+                return;
+            }
+            bytes_read += received;
+            bytes_written = 0;
+            while (bytes_written < received) {
+                bytes_written += fwrite(buffer + bytes_written, 1, received - bytes_written, untranslated_file);
+            }
+            if(bytes_read >= untranslated_file_size)
+                break;
+        }
+        fclose(untranslated_file);
+    }
+    else {
+        perror("Failed to receive file");
+    }
+
+    translated_file = get_image_translation(untranslated_filename, translated_filename, &translated_file_size);
+
+    if (translated_file == NULL) {
+        char const *response = "TRR NTA\n";
+        write(client_socket, response, strlen(response));
+    }
+    else {
+        char response[BUFFER_SIZE];
+        unsigned long response_size = sprintf(response, "TRR f %s %lu ", translated_filename, translated_file_size);
+
+        bytes_written = 0;
+        while (bytes_written < response_size)
+            bytes_written += write(client_socket, response, response_size);
+
+        bytes_written = 0;
+        bytes_read = 0;
+        while (bytes_written < translated_file_size) {
+            response_size = fread(response, 1, BUFFER_SIZE, translated_file);
+            bytes_written += write(client_socket, response, response_size);
+        }
+
+        while (write(client_socket, "\n", 1) != 1) continue;
+
+        fclose(translated_file);
+    }
+}
