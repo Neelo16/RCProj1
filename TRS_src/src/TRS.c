@@ -176,9 +176,14 @@ void handle_requests(int TRS_port) {
         FD_SET(fileno(stdin), &input_sources);
         FD_SET(TRS_socket, &input_sources);
 
-        /* FIXME check return value */
-        if (select(TRS_socket + 1, &input_sources, NULL, NULL, NULL) == -1 && errno == EINTR) {
-            continue; /* hopefully this is just a SIGINT and we can leave now */
+        if (select(TRS_socket + 1, &input_sources, NULL, NULL, NULL) == -1) {
+            if (errno == EINTR) {
+                continue; /* hopefully this is just a SIGINT and we can leave now */
+            }
+            else {
+                perror("Something went terribly wrong in select");
+                break;
+            }
         }
 
         if(FD_ISSET(TRS_socket, &input_sources)){ /* FIXME */
