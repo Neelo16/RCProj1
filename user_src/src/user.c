@@ -46,15 +46,12 @@ void parseTCSOptions(UDPHandler_p TCSHandler,int argc, char **argv){
             case 'p':
                 defaultP = 0;
                 TCSHandler->client.sin_port = htons(atoi(optarg));
-                printf("Using port: %s\n",optarg);
                 break;
             case 'n':
-                defaultA = 0;
-                printf("Using address: %s\n",optarg);
-                if((addr = gethostbyname(optarg)) == NULL)
-                    inet_aton(optarg , &TCSHandler->client.sin_addr);
-                else
+                if((addr = gethostbyname(optarg)) != NULL){
+                    defaultA = 0;
                     TCSHandler->client.sin_addr.s_addr = ((struct in_addr *) (addr->h_addr_list[0]))->s_addr;
+                }
                 break;
             case '?':
                 fprintf (stderr, "Unknown option `-%c'.\n", optopt);
@@ -452,6 +449,7 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
 
 int TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, const char *language){
     /* Estabilishes a TCP connection with the TRS server */
+    struct timeval tv; /* timeout */
     struct hostent *addr;
     printf(" %s %d\n",ip,port);
 
@@ -459,6 +457,11 @@ int TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, const
         exitMsg("Error creating TCP socket");
 
     /* Configure settings of the TCP socket */
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+    if (setsockopt(TRSHandler->clientFD, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0)
+        exitMsg("Error in setsockopt");
+
     TRSHandler->server.sin_family = AF_INET;
     TRSHandler->serverSize = sizeof(TRSHandler->server);
     if((addr = gethostbyname(ip)) == NULL) /* Check if TCS gave us an IP or hostname */
