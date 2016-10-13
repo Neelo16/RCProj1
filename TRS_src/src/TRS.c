@@ -344,11 +344,9 @@ int get_translation(char const *untranslated, char *translated, char const *file
 
 FILE *get_image_translation(char const *filename, char *new_filename, unsigned long *new_file_size) {
     FILE *translated_file = NULL;
-    puts("In image translation");
     if (!get_translation(filename, new_filename, "file_translation.txt")) {
         return NULL;
     }
-    puts("Got translation");
     translated_file = fopen(new_filename, "rb");
     fseek(translated_file, 0, SEEK_END);
     *new_file_size = ftell(translated_file);
