@@ -224,8 +224,6 @@ void handle_requests(int TRS_port) {
                         bytes_written += write(client_socket, response, response_len);
                     }
                 } else if (!strcmp(argument, "f")) {
-                    /* TODO save data to a file */
-                    /* TODO make sure we received everything we need */
                     FILE *new_file = NULL;
                     FILE *old_file = NULL;
                     char filename[BUFFER_SIZE];
