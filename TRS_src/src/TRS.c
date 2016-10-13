@@ -384,7 +384,7 @@ void handle_file_translation(int client_socket) {
     else {
         perror("Failed to receive file");
     }
-
+    puts(":)");
     translated_file = get_image_translation(untranslated_filename, translated_filename, &translated_file_size);
 
     if (translated_file == NULL) {

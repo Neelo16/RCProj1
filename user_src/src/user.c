@@ -356,12 +356,10 @@ int recvInitialData(TCPHandler_p TRSHandler, char *filename, unsigned long int *
     int i=0;
     char c;
 
-    printf(":)\n");
     if(!read_until_space(TRSHandler->clientFD,TRSHandler->buffer,4)){/*TRR f filename size */
         printf("Lost connection with TRS\n");
         return 0;
     }
-    printf("He sent something\n");
 
     /* to be read: f filename size */
     if(strcmp(TRSHandler->buffer,"TRR")){
@@ -369,6 +367,7 @@ int recvInitialData(TCPHandler_p TRSHandler, char *filename, unsigned long int *
     	return 0;
     }
 
+    printf("He sent something\n");
     while(i != 2){
     	i += read(TRSHandler->clientFD,TRSHandler->buffer,2);
     	if(!i){
@@ -380,12 +379,12 @@ int recvInitialData(TCPHandler_p TRSHandler, char *filename, unsigned long int *
     if(*TRSHandler->buffer != 'f'){
     	if(!read_until_newline(TRSHandler->clientFD,TRSHandler->buffer+2,BUFFSIZE))
     		printf("Lost connection with TRS\n");
-    	else if(!strcmp(TRSHandler->buffer,"NTA\n"))
+    	else if(!strcmp(TRSHandler->buffer,"NTA"))
         	printf("No translation available\n");           
-        else if(!strcmp(TRSHandler->buffer,"ERR\n"))
+        else if(!strcmp(TRSHandler->buffer,"ERR"))
         	printf("TRS ERR received. Please request translation again\n");
         else
-        	printf("An error occured while receiving file translation. Please repeat the request\n");
+        	printf("An error occured while receiving file translation. Please repeat the request %s\n",TRSHandler->buffer);
         return 0;
     }
 
