@@ -275,7 +275,7 @@ void handleTextTranslation(TCPHandler_p TRSHandler, char **words, char *ip,int N
         puts("Couldnt send data to TRS. Maybe the connection was closed");
         return;
     }
-
+ 	
     /* Read TRS's answer */
     processedBytes = read_until_newline(TRSHandler->clientFD,TRSHandler->buffer,BUFFSIZE);
     if(!processedBytes){
@@ -284,11 +284,12 @@ void handleTextTranslation(TCPHandler_p TRSHandler, char **words, char *ip,int N
     }
     
     *(TRSHandler->buffer+processedBytes) = '\0';
-    if(!strcmp(TRSHandler->buffer,"TRR NTA\n")){
+    printf("%s\n",TRSHandler->buffer);
+    if(!strcmp(TRSHandler->buffer,"TRR NTA")){
         printf("No translation available\n");
         return;     
     }
-    else if(!strcmp(TRSHandler->buffer,"TRR ERR\n")){
+    else if(!strcmp(TRSHandler->buffer,"TRR ERR")){
         printf("Too many words to translate\n");
         return;     
     }
@@ -335,7 +336,6 @@ int sendFile(TCPHandler_p TRSHandler, char *filename){
 
     written = 0;
     while (written < size) {
-    	printf("yes\n");
         bytes_read = fread(TRSHandler->buffer, 1, BUFFSIZE, file);
         bytes_read = safe_write(TRSHandler->clientFD, TRSHandler->buffer, bytes_read);
         if(!bytes_read){
@@ -367,7 +367,6 @@ int recvInitialData(TCPHandler_p TRSHandler, char *filename, unsigned long int *
     	return 0;
     }
 
-    printf("He sent something\n");
     while(i != 2){
     	i += read(TRSHandler->clientFD,TRSHandler->buffer,2);
     	if(!i){
