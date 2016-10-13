@@ -333,19 +333,17 @@ int sendFile(TCPHandler_p TRSHandler, char *filename){
         return 0;
     }
 
-    printf(":)\n");
     written = 0;
     while (written < size) {
     	printf("yes\n");
-        while(!fread(TRSHandler->buffer, 1, BUFFSIZE, file));
-        bytes_read = safe_write(TRSHandler->clientFD, TRSHandler->buffer, 1);
+        bytes_read = fread(TRSHandler->buffer, 1, BUFFSIZE, file);
+        bytes_read = safe_write(TRSHandler->clientFD, TRSHandler->buffer, bytes_read);
         if(!bytes_read){
             printf("Lost connection with TRS\n");
             return 0;
         }
         written += bytes_read;
     }
-    printf("no\n");
     if(!safe_write(TRSHandler->clientFD,"\n",1)){
         printf("Lost connection with TRS\n");
         return 0;

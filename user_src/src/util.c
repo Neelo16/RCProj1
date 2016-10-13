@@ -55,6 +55,6 @@ int safe_write(int fd, char const *msg, unsigned long msg_len) {
         }
         bytes_written += sent;
     }
-    return 1; 
+    return bytes_written; 
 }
 
