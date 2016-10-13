@@ -6,12 +6,20 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <string.h>
+#include <signal.h>
+#include <errno.h>
 
 #include "TRS.h"
 
 /* FIXME when you add util.c here */
 
 #define MIN(A,B) (A < B ? A : B)
+
+static int interrupted = 0;
+
+void handle_sigint(int signal) {
+    interrupted = 1;
+}
 
 int main(int argc, char *argv[])
 {
@@ -143,18 +151,22 @@ void handle_requests(int TRS_port) {
         return;
     }
 
-    while (running) {
+    signal(SIGINT, handle_sigint);
+
+    while (running && !interrupted) {
         fd_set input_sources;
         FD_ZERO(&input_sources);
         FD_SET(fileno(stdin), &input_sources);
         FD_SET(TRS_socket, &input_sources);
 
         /* FIXME check return value */
-        select(TRS_socket + 1, &input_sources, NULL, NULL, NULL);
+        if (select(TRS_socket + 1, &input_sources, NULL, NULL, NULL) == -1 && errno == EINTR) {
+            continue; /* hopefully this is just a SIGINT and we can leave now */
+        }
 
         if(FD_ISSET(TRS_socket, &input_sources)){ /* FIXME */
             struct sockaddr_in client_addr;
-            unsigned client_len = puts("Accepting client");
+            unsigned client_len;
             int client_socket = accept(TRS_socket, (struct sockaddr*)&client_addr, &client_len);
             char buffer[BUFFER_SIZE];
             size_t bytes_read = 0;
@@ -305,7 +317,6 @@ void handle_requests(int TRS_port) {
             close(client_socket);
         } else if (FD_ISSET(fileno(stdin), &input_sources)) {
             char buffer[BUFFER_SIZE];
-            puts("stdin");
             fgets(buffer, sizeof(buffer), stdin);
             running = strcmp(buffer, "exit\n");
         }
