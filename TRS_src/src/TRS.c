@@ -192,145 +192,26 @@ void handle_requests(int TRS_port) {
             unsigned client_len;
             int client_socket = accept(TRS_socket, (struct sockaddr*)&client_addr, &client_len);
             char buffer[BUFFER_SIZE];
-            unsigned long bytes_read = 0;
-            unsigned long bytes_written = 0;
-            char *argument = NULL;
+            char request_type = '\0';
 
             memset(buffer, '\0', sizeof(buffer));
             
             if (client_socket == -1) {
-                /* FIXME */
+                perror("Failed to create socket for client connection");
+                return;
             }
 
-            /* Ensure we receive at least enough bytes to determine if we have a valid request   */
-            /* No way to know if we received the whole thing yet as we don't know if it's a file */
-            /* or a list of words. */
-            while (bytes_read < sizeof("TRQ f")) {
-                bytes_read += read(client_socket, buffer, sizeof("TRQ f") - bytes_read);
-            }
+            request_type = get_request_type(client_socket);
 
-            argument = strtok(buffer, " ");
+            printf("%c\n", request_type);
 
-            if (!strcmp(argument, "TRQ")) {
-                argument = strtok(NULL, " ");
-                if (!strcmp(argument, "t")) {
-                    char response[512];
-                    int response_len = 0;
-                    int num_words = 0;
-                    bytes_written = 0;
-
-                    /* Now that we know this must be a string terminated by a newline, we can check if */
-                    /* we received the entire request */
-
-                    while (buffer[bytes_read - 1] != '\n') {
-                        bytes_read += read(client_socket, buffer + bytes_read, sizeof(buffer) - bytes_read);
-                    }
-                    /* Get rid of the newline character at the end and turn this into a null-terminated string */
-                    buffer[bytes_read - 1] = '\0';
-
-                    argument = strtok(NULL, " ");
-                    num_words = atoi(argument);
-                    response_len = sprintf(response, "TRR t %d", num_words);
-                    while (num_words-- > 0) {
-                        char translated_word[31];
-                        argument = strtok(NULL, " ");
-                        if (!get_text_translation(argument, translated_word)) {
-                            strcpy(response, "TRR NTA");
-                            break;
-                        }
-                        strcat(response, " ");
-                        strcat(response, translated_word);
-                    }
-                    strcat(response, "\n");
-                    response_len = strlen(response);
-                    while (bytes_written < response_len) {
-                        bytes_written += write(client_socket, response, response_len);
-                    }
-                } else if (!strcmp(argument, "f")) {
-                    FILE *new_file = NULL;
-                    FILE *old_file = NULL;
-                    char filename[BUFFER_SIZE];
-                    char new_filename[BUFFER_SIZE];
-                    unsigned long new_file_size = 0;
-                    unsigned long old_file_size = 0;
-                    bytes_read = 0;
-
-                    memset(filename, '\0', sizeof(filename));
-                    memset(new_filename, '\0', sizeof(new_filename));
-                    memset(buffer, '\0', sizeof(buffer));
-
-                    while (1) {
-                        bytes_read += read(client_socket, filename + bytes_read, 1);
-                        if (bytes_read && filename[bytes_read - 1] == ' ')
-                            break;
-                    }
-                    filename[bytes_read-1] = '\0';
-                    printf("Filename:%s|\n",filename);
-                    bytes_read = 0;
-                    while (1) {
-                        bytes_read += read(client_socket, buffer + bytes_read, 1);
-                        if (bytes_read && buffer[bytes_read - 1] == ' ')
-                            break;
-                    }
-                    buffer[bytes_read] = '\0';
-                    old_file_size = atoi(buffer);
-
-                    old_file = fopen(filename, "wb");
-                    bytes_read = 0;
-
-                    if(old_file != NULL){
-                        while(1){
-                            int received = read(client_socket, buffer, MIN(sizeof(buffer), old_file_size - bytes_read));
-                            if(!received){
-                                perror("Erro");
-                                return;
-                            }
-                            bytes_read += received;
-                            bytes_written = 0;
-                            while (bytes_written < received) {
-                                bytes_written += fwrite(buffer + bytes_written, 1, received - bytes_written, old_file);
-                            }
-                            if(bytes_read >= old_file_size)
-                                break;
-                        }
-                        fclose(old_file);
-                        printf("received file %s\n     %ld Bytes\n",filename,old_file_size);
-                    }
-                    else {
-                        printf("Error trying to download this file: %s\n",filename);
-                    }
-                    printf("Going to get the translation for %s now\n", filename);
-                    new_file = get_image_translation(filename, new_filename, &new_file_size);
-                    printf("Sending %s next\n", new_filename);
-                    if (new_file == NULL) {
-                        char const *response = "TRR NTA\n";
-                        write(client_socket, response, strlen(response));
-                    }
-                    else {
-                        char response[BUFFER_SIZE];
-                        unsigned long response_size = sprintf(response, "TRR f %s %lu ", new_filename, new_file_size);
-
-                        bytes_written = 0;
-                        while (bytes_written < response_size)
-                            bytes_written += write(client_socket, response, response_size);
-
-                        bytes_written = 0;
-                        bytes_read = 0;
-                        while (bytes_written < new_file_size) {
-                            response_size = fread(response, 1, BUFFER_SIZE, new_file);
-                            bytes_written += write(client_socket, response, response_size);
-                        }
-
-                        while (write(client_socket, "\n", 1) != 1) continue;
-
-                        fclose(new_file);
-                    }
-                } else {
-                    goto BAD_FORMAT;
-                }
+            // FIXME
+            if (request_type == 't') {
+                handle_text_translation(client_socket);
+            } else if (request_type == 'f') {
+                handle_file_translation(client_socket);
             } else {
-    BAD_FORMAT:
-                write(client_socket, "TRR ERR\n", strlen("TRR ERR\n"));
+                report_invalid_request(client_socket);
             }
 
             sleep(5);
@@ -381,3 +262,8 @@ int get_text_translation(char const *untranslated, char *translated) {
     return get_translation(untranslated, translated, "text_translation.txt");
 }
 
+void report_invalid_request(int client_socket) {
+    if (client_socket != -1) {
+        safe_write(client_socket, "TRR ERR\n", sizeof("TRR ERR"));
+    }
+}
