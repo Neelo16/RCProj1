@@ -82,6 +82,13 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
     int result = 0;
     unsigned long bytes_sent = 0;
     unsigned long bytes_received = 0;
+    struct timeval tv;
+
+    tv.tv_sec  = 5;
+    tv.tv_usec = 0;
+
+    setsockopt(TCS_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&tv, sizeof(struct timeval));
+    setsockopt(TCS_socket, SOL_SOCKET, SO_SNDTIMEO, (char*)&tv, sizeof(struct timeval));
 
     gethostname(buffer, BUFFER_SIZE);
     TRS_ptr = gethostbyname(buffer);
@@ -109,13 +116,23 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
 
     /* Make sure we send the entire buffer and not just part of it */
     while (bytes_sent < strlen(buffer)) {
-        bytes_sent += sendto(TCS_socket, buffer + bytes_sent, strlen(buffer + bytes_sent), 0,
+        int received = sendto(TCS_socket, buffer + bytes_sent, strlen(buffer + bytes_sent), 0,
                              (struct sockaddr*)&TCS_addr, addrlen);
+        if (received == -1) {
+            perror("Failed to send message to TCS");
+            return 0;
+        }
+        bytes_sent += received;
     }
 
     /* FIXME We need to maybe check if we received everything? */
     bytes_received = recvfrom(TCS_socket, buffer, sizeof(buffer), 0,
                               (struct sockaddr*)&TCS_addr, &addrlen);
+
+    if (bytes_received == -1) {
+        perror("Failed to receive TCS reply");
+        return 0;
+    }
 
     /* FIXME change this filthy hack */
     buffer[bytes_received < BUFFER_SIZE ? bytes_received : BUFFER_SIZE - 1] = '\0';
