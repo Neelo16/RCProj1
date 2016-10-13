@@ -323,9 +323,13 @@ void handle_requests(int TRS_port) {
 }
 
 int get_translation(char const *untranslated, char *translated, char const *filename) {
-    FILE *translation_file = fopen(filename, "r"); /* FIXME CHECK NULL*/
+    FILE *translation_file = fopen(filename, "r"); 
     char buffer[32];
     int got_translation = 0;
+    if (translation_file == NULL) {
+        perror("Failed to find translation file");
+        return 0;
+    }
     memset((void*)buffer, '\0', sizeof(buffer));
     while (!feof(translation_file)) {
         fscanf(translation_file, "%s %s\n", buffer, translated);
