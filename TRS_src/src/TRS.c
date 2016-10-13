@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <errno.h>
 
+#include "util.h"
 #include "TRS.h"
 
 /* FIXME when you add util.c here */
@@ -25,7 +26,7 @@ int main(int argc, char *argv[])
 {
     const char *language = NULL;
     unsigned TRS_port = 59000u;
-    unsigned TCS_port = 58000 + GROUP_NUMBER;
+    unsigned TCS_port = TCS_PORT;
     char TCS_name[BUFFER_SIZE];
     gethostname(TCS_name, BUFFER_SIZE);
 
