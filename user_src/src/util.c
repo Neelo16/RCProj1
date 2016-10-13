@@ -27,8 +27,9 @@ int read_until_char(int fd, char *buffer, size_t buffer_size, char to_read) {
         }
         if (read_char == to_read) {
             *buffer = '\0'; /* Terminate the string and return OK */
-            return 1;
+            return bytes_read;
         } else {
+            bytes_read += received;
             *buffer = read_char; /* Store the received message */
             buffer += received;  /* until it's over            */
         }
