@@ -298,8 +298,7 @@ void handle_requests(int TRS_port) {
                             bytes_written += write(client_socket, response, response_size);
                         }
 
-                        while (write(client_socket, "\n", 1) != 1)
-                            ;
+                        while (write(client_socket, "\n", 1) != 1) continue;
 
                         fclose(new_file);
                     }
