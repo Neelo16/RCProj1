@@ -21,4 +21,6 @@ int read_until_space(int fd, char *buffer, size_t buffer_size);
 /* Specific case of read_until_char for space ('\n')                                                        */
 int read_until_newline(int fd, char *buffer, size_t buffer_size);
 
+/* Ensures msg is sent to fd, unless there is an error in write, in which case errno wil be set             */
+int safe_write(int fd, char const *msg, unsigned long msg_len);
 #endif

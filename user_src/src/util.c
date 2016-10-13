@@ -43,3 +43,17 @@ inline int read_until_space(int fd, char *buffer, unsigned long buffer_size) {
 inline int read_until_newline(int fd, char *buffer, size_t buffer_size) {
     return read_until_char(fd, buffer, buffer_size, '\n');
 }
+
+int safe_write(int fd, char const *msg, unsigned long msg_len) {
+    unsigned long bytes_written = 0;
+    errno = 0;
+    while (bytes_written < msg_len) {
+        int sent = write(fd, msg + bytes_written, msg_len - bytes_written);
+        if (sent == -1) {
+            return 0;
+        }
+        bytes_written += sent;
+    }
+    return 1; 
+}
+
