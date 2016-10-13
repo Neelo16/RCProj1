@@ -284,3 +284,54 @@ char get_request_type(int client_socket) {
     return *buffer;
 }
 
+void handle_text_translation(int client_socket) {
+    char response[BUFFER_SIZE];
+    char buffer[BUFFER_SIZE];
+    size_t response_len = 0;
+    int num_words = 0;
+    size_t bytes_written = 0;
+
+    if (!read_until_space(client_socket, buffer, sizeof(buffer))) {
+        report_invalid_request(client_socket);
+        return;
+    }
+
+    num_words = atoi(buffer);
+    if (num_words > MAX_WORDS_PER_REQUEST) {
+        report_invalid_request(client_socket);
+        return;
+    }
+    response_len = sprintf(response, "TRR t %d", num_words);
+    while (num_words-- > 1) {
+        char translated_word[MAX_WORD_LEN+1];
+        if (!read_until_space(client_socket, buffer, MAX_WORD_LEN)) {
+            report_invalid_request(client_socket);
+            return;
+        }
+        if (!get_text_translation(buffer, translated_word)) {
+            strcpy(response, "TRR NTA");
+            break;
+        }
+        strcat(response, " ");
+        strcat(response, translated_word);
+    }
+
+    if (num_words == 0) { /* Last word ends in a newline*/
+        char translated_word[MAX_WORD_LEN+1];
+        if (!read_until_newline(client_socket, buffer, MAX_WORD_LEN)) {
+            report_invalid_request(client_socket);
+            return;
+        }
+        if (!get_text_translation(buffer, translated_word)) {
+            strcpy(response, "TRR NTA");
+        } else {
+            strcat(response, " ");
+            strcat(response, translated_word);
+        }
+    }
+
+    strcat(response, "\n");
+    response_len = strlen(response);
+    safe_write(client_socket, response, response_len);
+}
+
