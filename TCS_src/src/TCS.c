@@ -247,7 +247,7 @@ int main(int argc, const char **argv)  {
 	        	/* If the format of the buffer is not correct. */
 	            if(strlen(buffer) > 4) 
 	            {
-	                strcpy(reply,"URR\n");
+	                strcpy(reply,"ULR ERR\n");
 	                error = sendto(serverFD, reply, 4, 0, (struct sockaddr*) &clientaddr, addrlen);
 
 	                if(error == -1)
