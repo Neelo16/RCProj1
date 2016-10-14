@@ -82,6 +82,7 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
     tv.tv_sec  = 5;
     tv.tv_usec = 0;
 
+    /* Set a timeout for the socket, in case the TCS server is offline (or can't be reached for other reasons) */
     setsockopt(TCS_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&tv, sizeof(struct timeval));
     setsockopt(TCS_socket, SOL_SOCKET, SO_SNDTIMEO, (char*)&tv, sizeof(struct timeval));
 
