@@ -201,11 +201,11 @@ void handle_requests(int TRS_port) {
                 return;
             }
 
+            printf("Receiving request from %s port %d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
             request_type = get_request_type(client_socket);
 
-            printf("%c\n", request_type);
 
-            // FIXME
             if (request_type == 't') {
                 handle_text_translation(client_socket);
             } else if (request_type == 'f') {
