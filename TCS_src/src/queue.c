@@ -153,14 +153,14 @@ void listLanguages(trs_list list, char *aux_r)
     int auxRLen;
 
     auxRLen = sprintf(aux_r, "%s %d", "ULR", sizeList(list));
-    
     for(aux = list->head; aux != NULL; aux = aux->next)
     {
+        printf(" %s",aux->item->language);
         auxRLen += sprintf(aux_r+auxRLen," %s",aux->item->language);
     }
+    puts("");
 
     *(aux_r+auxRLen) = '\0';
-    printf("%s\n",aux_r);
 }
 
 void showList(trs_list list)

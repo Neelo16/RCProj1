@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <string.h>
@@ -74,6 +75,7 @@ void getTRSInfo(trs_list list, char* language, char reply[])
     {
     	replyLen = sprintf(reply, "UNR ");
     	replyLen = sprintf(reply + replyLen,"%s %d\n", getIp(trs),getPort(trs));
+    	printf("%s\n",reply);
     }    
 }
 
@@ -106,7 +108,9 @@ void checkTRS(trs_list list, char buffer[], char reply[])
            
             addTRSItem(list, trs);
 
-            strcpy(reply, "SRR OK\n");            
+            strcpy(reply, "SRR OK\n");   
+
+            printf("+%s %s %s\n",language,ip,port);         
         }
         /* otherwise sends status not ok*/
         else
@@ -131,7 +135,7 @@ void stopTranslating(trs_list list, char buffer[], char reply[])
     {
         strcpy(reply, "SUR NOK\n");
 
-        destroyTRS(trs);
+        free(trs);
     }
     else
     {
@@ -143,8 +147,10 @@ void stopTranslating(trs_list list, char buffer[], char reply[])
             destroyTRS(trs);
 
         /*if it is found removes it from the list */
-        else
+        else{
             removeTRS(list, language); 
+            printf("-%s %s %d\n",language,trs->ip,trs->port);
+        }
     }
 }
 
@@ -230,10 +236,11 @@ int main(int argc, const char **argv)  {
 			
             
 	        *(buffer + received) = '\0';
-	        printf("%s",buffer);
+	        /*printf("%s",buffer);*/
 
 	        if(!strncmp(buffer, "ULQ", 3))
 	        {
+	        	printf("List request: %s %d\n",inet_ntoa(clientaddr.sin_addr),ntohs(clientaddr.sin_port));
 	        	/* If the format of the buffer is not correct. */
 	            if(strlen(buffer) > 4) 
 	            {
