@@ -36,7 +36,7 @@ int read_until_char(int fd, char *buffer, size_t buffer_size, char to_read) {
 
         received = read(fd, &read_char, 1);
 
-        if (received == -1 || errno != 0) {
+        if (received == 0 || received == -1 || errno != 0) {
             return -1;
         }
         if (read_char == to_read) {

@@ -269,12 +269,10 @@ char get_request_type(int client_socket) {
     char buffer[BUFFER_SIZE];
     memset((void*)buffer, '\0', sizeof(buffer));
     if (read_until_space(client_socket, buffer, sizeof(buffer)) == -1 || strcmp(buffer, "TRQ")) {
-        report_invalid_request(client_socket);
         return '\0';
     }
 
     if (read_until_space(client_socket, buffer, sizeof(buffer)) == -1 || (buffer[0] != 't' && buffer[0] != 'f')) {
-        report_invalid_request(client_socket);
         return '\0';
     }
     return *buffer;

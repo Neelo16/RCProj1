@@ -451,6 +451,17 @@ void request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **
         return; 
     }
     
+    /* Check if user want to send an invalid file */
+    if(c == 'f'){
+        FILE *f = fopen(filename,"rb");
+        if(f == NULL){
+            printf("Invalid file\n");
+            return;
+        }
+
+        fclose(f);
+    }
+
     if(!sendUNQ(TRSHandler,TCSHandler,languages,langName,&ip,&port)) /* Asks TCS for TRS location */
         return;
 
