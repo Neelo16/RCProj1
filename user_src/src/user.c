@@ -106,6 +106,9 @@ int getLanguages(UDPHandler_p TCSHandler, char ***languages){
         return 0;
     }
     part = strtok(NULL, " "); /* N */
+    if(part == NULL || !strncmp(part,"EOF\n",4)){
+        return 0;
+    }
     langNumber = atoi(part);
     *languages = (char **) safeMalloc(sizeof(char *)*langNumber);
     for(i = 0; i < langNumber; i++)
