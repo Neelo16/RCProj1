@@ -133,7 +133,7 @@ int list(UDPHandler_p TCSHandler, char ***languages){
 
     /* Print languages */
     for(i = 0; i < langNumber; i++)
-        printf(" %d- %s\n", i+1, (*languages)[i]);
+        printf(" %d - %s\n", i+1, (*languages)[i]);
     return langNumber;
 }
 
