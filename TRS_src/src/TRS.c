@@ -131,10 +131,9 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
         return 0;
     }
 
-    /* FIXME change this filthy hack */
+    /* Ensure the buffer contains a null-terminated string */
     buffer[bytes_received < BUFFER_SIZE ? bytes_received : BUFFER_SIZE - 1] = '\0';
 
-    /* FIXME I should probably change these conditionals to something else */
     if (!strcmp(buffer, deregister ? "SUR OK\n" : "SRR OK\n")) {
         result = 1;
     } else if(!strcmp(buffer, deregister ? "SUR NOK\n" : "SRR NOK\n") || !strcmp(buffer, deregister ? "SUR NERR" : "SRR NERR\n")) {
@@ -183,7 +182,7 @@ void handle_requests(int TRS_port) {
             }
         }
 
-        if(FD_ISSET(TRS_socket, &input_sources)){ /* FIXME */
+        if(FD_ISSET(TRS_socket, &input_sources)){
             struct sockaddr_in client_addr;
             unsigned client_len = sizeof(client_addr);
             int client_socket = accept(TRS_socket, (struct sockaddr*)&client_addr, &client_len);
@@ -260,7 +259,7 @@ int get_text_translation(char const *untranslated, char *translated) {
 
 void report_invalid_request(int client_socket) {
     if (client_socket != -1) {
-        safe_write(client_socket, "TRR ERR\n", sizeof("TRR ERR"));
+        safe_write(client_socket, "TRR ERR\n", sizeof("TRR ERR")); // FIXME?
     }
     puts("Received badly formatted request from client.");
 }
@@ -268,12 +267,12 @@ void report_invalid_request(int client_socket) {
 char get_request_type(int client_socket) {
     char buffer[BUFFER_SIZE];
     memset((void*)buffer, '\0', sizeof(buffer));
-    if (!read_until_space(client_socket, buffer, sizeof(buffer)) || strcmp(buffer, "TRQ")) {
+    if (read_until_space(client_socket, buffer, sizeof(buffer)) == -1 || strcmp(buffer, "TRQ")) {
         report_invalid_request(client_socket);
         return '\0';
     }
 
-    if (!read_until_space(client_socket, buffer, sizeof(buffer)) || (buffer[0] != 't' && buffer[0] != 'f')) {
+    if (read_until_space(client_socket, buffer, sizeof(buffer)) == -1 || (buffer[0] != 't' && buffer[0] != 'f')) {
         report_invalid_request(client_socket);
         return '\0';
     }
@@ -289,7 +288,7 @@ void handle_text_translation(int client_socket) {
     int translatable = 1;
     int i;
 
-    if (!read_until_space(client_socket, buffer, sizeof(buffer))) {
+    if (read_until_space(client_socket, buffer, sizeof(buffer)) == -1) {
         report_invalid_request(client_socket);
         return;
     }
@@ -301,20 +300,20 @@ void handle_text_translation(int client_socket) {
     }
 
     if (num_words == 0) {
-        safe_write(client_socket, "TRR t 0\n", sizeof("TRR t 0\n"));
+        safe_write(client_socket, "TRR t 0\n", sizeof("TRR t 0\n")); // FIXME
         return;
     }
 
     response_len = sprintf(response, "TRR t %d", num_words);
 
     for (i = 0; i < num_words - 1; i++) {
-        if (!read_until_space(client_socket, words[i], MAX_WORD_LEN)) {
+        if (read_until_space(client_socket, words[i], MAX_WORD_LEN) == -1) {
             report_invalid_request(client_socket);
             return;
         }
     }
 
-    if (!read_until_newline(client_socket, words[num_words-1], MAX_WORD_LEN)) { /* Last words ends in a newline */
+    if (read_until_newline(client_socket, words[num_words-1], MAX_WORD_LEN) == -1) { /* Last words ends in a newline */
         report_invalid_request(client_socket);
         return;
     }
@@ -356,20 +355,17 @@ void handle_file_translation(int client_socket) {
     size_t bytes_read = 0;
     size_t bytes_written = 0;
 
-    if (!read_until_space(client_socket, untranslated_filename, sizeof(untranslated_filename))) {
+    if (read_until_space(client_socket, untranslated_filename, sizeof(untranslated_filename)) == -1) {
         report_invalid_request(client_socket);
         return;
     }
 
-    puts(untranslated_filename); // FIXME
-
-    if (!read_until_space(client_socket, buffer, sizeof(buffer))) {
+    if (read_until_space(client_socket, buffer, sizeof(buffer)) == -1) {
         report_invalid_request(client_socket);
         return;
     }
     
     untranslated_file_size = atoi(buffer);
-    printf("%lu\n", untranslated_file_size); // FIXME
 
     untranslated_file = fopen(untranslated_filename, "wb");
     bytes_read = 0;
@@ -398,8 +394,7 @@ void handle_file_translation(int client_socket) {
         perror("Failed to receive file");
     }
 
-    /* FIXME return -1 instead of 0, because in this case we want to read 0 bytes before newline */
-    if (!read_until_newline(client_socket, buffer, 1)) {
+    if (read_until_newline(client_socket, buffer, 1) == -1) {
         puts("Missing newline at the end of request. Will not send translation file.");
         report_invalid_request(client_socket);
         return;

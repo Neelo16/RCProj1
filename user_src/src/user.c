@@ -257,14 +257,14 @@ void handleTextTranslation(TCPHandler_p TRSHandler, char **words, char *ip,int N
     processedBytes = sprintf(TRSHandler->buffer, "TRQ t %d",N);
     for(i = 0; i < N; i++)
         processedBytes += sprintf(TRSHandler->buffer+processedBytes," %s",words[i]);
-    if(!safe_write(TRSHandler->clientFD,TRSHandler->buffer,processedBytes)){               /* Send  text translation request to TRS */
+    if(safe_write(TRSHandler->clientFD,TRSHandler->buffer,processedBytes) == -1){               /* Send  text translation request to TRS */
         puts("Couldnt send data to TRS. Maybe the connection was closed");
         return;
     }
  	
     /* Read TRS's answer */
     processedBytes = read_until_newline(TRSHandler->clientFD,TRSHandler->buffer,BUFFSIZE);
-    if(!processedBytes){
+    if(processedBytes == -1){
         printf("Lost connection with TRS\n");
         return;
     }
@@ -314,7 +314,7 @@ int sendFile(TCPHandler_p TRSHandler, char *filename){
     printf("     %ld Bytes to transmit\n",size);
     rewind(file);
 
-    if(!safe_write(TRSHandler->clientFD,TRSHandler->buffer,written)){
+    if(safe_write(TRSHandler->clientFD,TRSHandler->buffer,written) == -1){
         printf("Lost connection with TRS\n");
         return 0;
     }
@@ -323,13 +323,13 @@ int sendFile(TCPHandler_p TRSHandler, char *filename){
     while (written < size) {
         bytes_read = fread(TRSHandler->buffer, 1, BUFFSIZE, file);
         bytes_read = safe_write(TRSHandler->clientFD, TRSHandler->buffer, bytes_read);
-        if(!bytes_read){
+        if(bytes_read == -1){
             printf("Lost connection with TRS\n");
             return 0;
         }
         written += bytes_read;
     }
-    if(!safe_write(TRSHandler->clientFD,"\n",1)){
+    if(safe_write(TRSHandler->clientFD,"\n",1) == -1){
         printf("Lost connection with TRS\n");
         return 0;
     }
@@ -340,7 +340,7 @@ int sendFile(TCPHandler_p TRSHandler, char *filename){
 int recvInitialData(TCPHandler_p TRSHandler, char *filename, unsigned long int *size){
     int i=0;
 
-    if(!read_until_space(TRSHandler->clientFD,TRSHandler->buffer,4)){/*TRR f filename size */
+    if(read_until_space(TRSHandler->clientFD,TRSHandler->buffer,4) == -1){/*TRR f filename size */
         printf("Lost connection with TRS\n");
         return 0;
     }
@@ -359,7 +359,7 @@ int recvInitialData(TCPHandler_p TRSHandler, char *filename, unsigned long int *
     	}
     }
     if(*TRSHandler->buffer != 'f'){
-    	if(!read_until_newline(TRSHandler->clientFD,TRSHandler->buffer+2,BUFFSIZE))
+    	if(read_until_newline(TRSHandler->clientFD,TRSHandler->buffer+2,BUFFSIZE) == -1)
     		printf("Lost connection with TRS\n");
     	else if(!strcmp(TRSHandler->buffer,"NTA"))
         	printf("No translation available\n");           
@@ -370,7 +370,7 @@ int recvInitialData(TCPHandler_p TRSHandler, char *filename, unsigned long int *
         return 0;
     }
 
-    if(!read_until_space(TRSHandler->clientFD,filename,100)){
+    if(read_until_space(TRSHandler->clientFD,filename,100) == -1){
     	printf("Lost connection with TRS\n");
     	return 0;
     }

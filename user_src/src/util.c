@@ -30,18 +30,15 @@ int read_until_char(int fd, char *buffer, size_t buffer_size, char to_read) {
         int retval = select(fd + 1, &rfds, NULL, NULL, &tv);
 
         if (retval == 0 || retval == -1) { /* Timeout, or something more serious, */
-            puts("timeout");
-            return 0;                     /* so we should give up                */
+            return -1;                     /* so we should give up                */
         }
 
         int received = read(fd, &read_char, 1);
 
         if (received == -1) {
-            puts("was negative");
-            return 0;
+            return -1;
         }
         if (read_char == to_read) {
-            puts("all is good");
             *buffer = '\0'; /* Terminate the string and return OK */
             return bytes_read;
         } else {
@@ -50,7 +47,7 @@ int read_until_char(int fd, char *buffer, size_t buffer_size, char to_read) {
             buffer += received;  /* until it's over            */
         }
     }
-    return 0;
+    return -1;
 }
 
 inline int read_until_space(int fd, char *buffer, unsigned long buffer_size) {
@@ -67,7 +64,7 @@ int safe_write(int fd, char const *msg, unsigned long msg_len) {
     while (bytes_written < msg_len) {
         int sent = write(fd, msg + bytes_written, msg_len - bytes_written);
         if (sent == -1) {
-            return 0;
+            return -1;
         }
         bytes_written += sent;
     }
