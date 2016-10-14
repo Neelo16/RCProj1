@@ -12,10 +12,6 @@
 #include "util.h"
 #include "TRS.h"
 
-/* FIXME when you add util.c here */
-
-#define MIN(A,B) (A < B ? A : B)
-
 static int interrupted = 0;
 
 void handle_sigint(int signal) {
@@ -266,6 +262,7 @@ void report_invalid_request(int client_socket) {
     if (client_socket != -1) {
         safe_write(client_socket, "TRR ERR\n", sizeof("TRR ERR"));
     }
+    puts("Received badly formatted request from client.");
 }
 
 char get_request_type(int client_socket) {
@@ -286,8 +283,11 @@ char get_request_type(int client_socket) {
 void handle_text_translation(int client_socket) {
     char response[BUFFER_SIZE];
     char buffer[BUFFER_SIZE];
+    char words[MAX_WORDS_PER_REQUEST][MAX_WORD_LEN+1];
     size_t response_len = 0;
     int num_words = 0;
+    int translatable = 1;
+    int i;
 
     if (!read_until_space(client_socket, buffer, sizeof(buffer))) {
         report_invalid_request(client_socket);
@@ -299,38 +299,50 @@ void handle_text_translation(int client_socket) {
         report_invalid_request(client_socket);
         return;
     }
+
+    if (num_words == 0) {
+        safe_write(client_socket, "TRR t 0\n", sizeof("TRR t 0\n"));
+        return;
+    }
+
     response_len = sprintf(response, "TRR t %d", num_words);
-    while (num_words-- > 1) {
-        char translated_word[MAX_WORD_LEN+1];
-        if (!read_until_space(client_socket, buffer, MAX_WORD_LEN)) {
+
+    for (i = 0; i < num_words - 1; i++) {
+        if (!read_until_space(client_socket, words[i], MAX_WORD_LEN)) {
             report_invalid_request(client_socket);
             return;
         }
-        if (!get_text_translation(buffer, translated_word)) {
-            strcpy(response, "TRR NTA");
-            break;
-        }
-        strcat(response, " ");
-        strcat(response, translated_word);
     }
 
-    if (num_words == 0) { /* Last word ends in a newline*/
+    if (!read_until_newline(client_socket, words[num_words-1], MAX_WORD_LEN)) { /* Last words ends in a newline */
+        report_invalid_request(client_socket);
+        return;
+    }
+
+    for (i = 0; i < num_words; i++) {
+        printf(" %s", words[i]);
+    }
+    putchar('\n');
+
+    for (i = 0; i < num_words; i++) {
         char translated_word[MAX_WORD_LEN+1];
-        if (!read_until_newline(client_socket, buffer, MAX_WORD_LEN)) {
-            report_invalid_request(client_socket);
-            return;
-        }
-        if (!get_text_translation(buffer, translated_word)) {
-            strcpy(response, "TRR NTA");
+        if (!get_text_translation(words[i], translated_word)) {
+            fputs(" (no translation)", stdin);
+            response_len = sprintf(response, "TRR NTA\n");
+            translatable = 0;
         } else {
-            strcat(response, " ");
-            strcat(response, translated_word);
+            printf(" %s", translated_word);
+            if (translatable) {
+                strcat(response, " ");
+                strcat(response, translated_word);
+            }
         }
     }
+    putchar('\n');
 
-    strcat(response, "\n");
     response_len = strlen(response);
     safe_write(client_socket, response, response_len);
+    safe_write(client_socket, "\n", 1);
 }
 
 void handle_file_translation(int client_socket) {
@@ -362,6 +374,8 @@ void handle_file_translation(int client_socket) {
     untranslated_file = fopen(untranslated_filename, "wb");
     bytes_read = 0;
 
+    printf("Receiving file %s (%lu bytes).\n", untranslated_filename, (unsigned long) untranslated_file_size);
+
     if(untranslated_file != NULL){
         while(1){
             int received = read(client_socket, buffer, MIN(sizeof(buffer), untranslated_file_size - bytes_read));
@@ -374,13 +388,21 @@ void handle_file_translation(int client_socket) {
             while (bytes_written < received) {
                 bytes_written += fwrite(buffer + bytes_written, 1, received - bytes_written, untranslated_file);
             }
-            if(bytes_read >= untranslated_file_size)
+            if(bytes_read == untranslated_file_size)
                 break;
         }
         fclose(untranslated_file);
+        puts("Received file.");
     }
     else {
         perror("Failed to receive file");
+    }
+
+    /* FIXME return -1 instead of 0, because in this case we want to read 0 bytes before newline */
+    if (!read_until_newline(client_socket, buffer, 1)) {
+        puts("Missing newline at the end of request. Will not send translation file.");
+        report_invalid_request(client_socket);
+        return;
     }
 
     translated_file = get_image_translation(untranslated_filename, translated_filename, &translated_file_size);
@@ -388,17 +410,17 @@ void handle_file_translation(int client_socket) {
     if (translated_file == NULL) {
         char const *response = "TRR NTA\n";
         write(client_socket, response, strlen(response));
+        puts("No translation found for received file.");
     }
     else {
         char response[BUFFER_SIZE];
         unsigned long response_size = sprintf(response, "TRR f %s %lu ", translated_filename, translated_file_size);
 
-        bytes_written = 0;
-        while (bytes_written < response_size)
-            bytes_written += write(client_socket, response, response_size);
+        safe_write(client_socket, response, response_size);
+
+        printf("Sending file %s (%lu bytes).\n", translated_filename, (unsigned long) translated_file_size);
 
         bytes_written = 0;
-        bytes_read = 0;
         while (bytes_written < translated_file_size) {
             response_size = fread(response, 1, BUFFER_SIZE, translated_file);
             bytes_written += write(client_socket, response, response_size);
@@ -407,5 +429,6 @@ void handle_file_translation(int client_socket) {
         while (write(client_socket, "\n", 1) != 1) continue;
 
         fclose(translated_file);
+        puts("File sent.");
     }
 }

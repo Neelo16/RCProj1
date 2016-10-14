@@ -30,14 +30,18 @@ int read_until_char(int fd, char *buffer, size_t buffer_size, char to_read) {
         int retval = select(fd + 1, &rfds, NULL, NULL, &tv);
 
         if (retval == 0 || retval == -1) { /* Timeout, or something more serious, */
+            puts("timeout");
             return 0;                     /* so we should give up                */
         }
 
         int received = read(fd, &read_char, 1);
+
         if (received == -1) {
+            puts("was negative");
             return 0;
         }
         if (read_char == to_read) {
+            puts("all is good");
             *buffer = '\0'; /* Terminate the string and return OK */
             return bytes_read;
         } else {
