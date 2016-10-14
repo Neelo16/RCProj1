@@ -21,6 +21,18 @@ int read_until_char(int fd, char *buffer, size_t buffer_size, char to_read) {
     size_t bytes_read = 0;
     errno = 0;
     while (bytes_read < buffer_size) {
+        fd_set rfds;
+        struct timeval tv;
+        tv.tv_sec  = 1;
+        tv.tv_usec = 0;
+        FD_ZERO(&rfds);
+        FD_SET(fd, &rfds);
+        int retval = select(fd + 1, &rfds, NULL, NULL, &tv);
+
+        if (retval == 0 || retval == -1) { /* Timeout, or something more serious, */
+            return 0;                     /* so we should give up                */
+        }
+
         int received = read(fd, &read_char, 1);
         if (received == -1) {
             return 0;
