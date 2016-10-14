@@ -54,8 +54,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    printf("TRS port: %u\nTCS port: %u\nTCS name: %s\n", TRS_port, TCS_port, TCS_name);
-
     if (!register_language(TRS_port, TCS_name, TCS_port, language, 0)) {
         fprintf(stderr, "Failed to register language %s\n", language);
         return EXIT_FAILURE;
