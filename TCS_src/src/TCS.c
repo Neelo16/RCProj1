@@ -230,6 +230,7 @@ int main(int argc, const char **argv)  {
 
     	else if( FD_ISSET(serverFD, &rfds))
     	{
+            int has_newline;
     		/*Receives buffer from client*/
 	        received = recvfrom(serverFD, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientaddr, &addrlen);
 	        
@@ -237,15 +238,15 @@ int main(int argc, const char **argv)  {
 	            finishProgram(&serverFD, server_list, "An error occurred on recvfrom");
 	      
 			
-            
-	        *(buffer + received) = '\0';
+            has_newline = (buffer[received-1] == '\n');
+	        buffer[received-1] = '\0';
 	        /*printf("%s",buffer);*/
 
 	        if(!strncmp(buffer, "ULQ", 3))
 	        {
 	        	printf("List request: %s %d\n",inet_ntoa(clientaddr.sin_addr),ntohs(clientaddr.sin_port));
 	        	/* If the format of the buffer is not correct. */
-	            if(strlen(buffer) > 4) 
+	            if(strlen(buffer) > 4 || !has_newline) 
 	            {
 	                strcpy(reply,"ULR ERR\n");
 	                error = sendto(serverFD, reply, 4, 0, (struct sockaddr*) &clientaddr, addrlen);
@@ -275,41 +276,56 @@ int main(int argc, const char **argv)  {
 	        }
 	        else if(!strncmp(buffer, "UNQ", 3))
 	        {
-	            /* gets language requested from the serverFD */
-	            getBufferLanguage(buffer, language); 
-	            
-	            /* looks for the language in TRS list and returns its info */
-	            getTRSInfo( server_list, language, reply);
-	            error = sendto(serverFD, reply, strlen(reply), 0, (struct sockaddr*) &clientaddr, addrlen);
+                if (!has_newline) {
+                    error = sendto(serverFD, "UNR ERR\n", strlen("UNR ERR\n"), 0, (struct sockaddr*) &clientaddr, addrlen);
+                    if (error == -1)
+                        finishProgram(&serverFD, server_list, "An error occurred on sendto");
+                } else {
+                    /* gets language requested from the serverFD */
+                    getBufferLanguage(buffer, language); 
+                    
+                    /* looks for the language in TRS list and returns its info */
+                    getTRSInfo( server_list, language, reply);
+                    error = sendto(serverFD, reply, strlen(reply), 0, (struct sockaddr*) &clientaddr, addrlen);
 
-	            if(error == -1)
-	              	finishProgram(&serverFD, server_list, "An error occurred on sendto");
-	            
+                    if(error == -1)
+                        finishProgram(&serverFD, server_list, "An error occurred on sendto");
+                }
 	        }
 	        else if(!strncmp( buffer, "SRG", 3))
 	        {
-	            /*confirms if the TRS is in server_list*/
-	            checkTRS(server_list, buffer, reply);
+                if (!has_newline) {
+                    error = sendto(serverFD, "SRR ERR\n", strlen("SRR ERR\n"), 0, (struct sockaddr*) &clientaddr, addrlen);
+                    if (error == -1)
+                        finishProgram(&serverFD, server_list, "An error occurred on sendto");
+                } else {
+                    /*confirms if the TRS is in server_list*/
+                    checkTRS(server_list, buffer, reply);
 
-	            /*sends status to TRS */
-	            error = sendto(serverFD, reply, strlen(reply), 0, (struct sockaddr*) &clientaddr, addrlen);
+                    /*sends status to TRS */
+                    error = sendto(serverFD, reply, strlen(reply), 0, (struct sockaddr*) &clientaddr, addrlen);
 
-	            if(error == -1)
-	              	finishProgram(&serverFD, server_list, "An error occurred on sendto");
-
+                    if(error == -1)
+                        finishProgram(&serverFD, server_list, "An error occurred on sendto");
+                }
 	        }
 	        else if(!strncmp( buffer, "SUN", 3))
 	        {
-	            /* if the message was received successfuly the TCS looks for the TRS in the 
-	             * server_list and deletes it if it exist in server_list. Otherwise the status
-	             * is NOK.*/
-	            stopTranslating(server_list, buffer, reply);
-	            
-	            error = sendto(serverFD, reply, strlen(reply), 0, (struct sockaddr*) &clientaddr, addrlen);
+                if (!has_newline) {
+                    error = sendto(serverFD, "SRR ERR\n", strlen("SRR ERR\n"), 0, (struct sockaddr*) &clientaddr, addrlen);
+                    if (error == -1)
+                        finishProgram(&serverFD, server_list, "An error occurred on sendto");
+                } else {
+                    /* if the message was received successfuly the TCS looks for the TRS in the 
+                     * server_list and deletes it if it exist in server_list. Otherwise the status
+                     * is NOK.*/
+                    stopTranslating(server_list, buffer, reply);
+                    
+                    error = sendto(serverFD, reply, strlen(reply), 0, (struct sockaddr*) &clientaddr, addrlen);
 
-	            if(error == -1)
-	              	finishProgram(&serverFD, server_list, "An error occurred on sendto");
-	            
+                    if(error == -1)
+                        finishProgram(&serverFD, server_list, "An error occurred on sendto");
+                }
 	        }
 	    }
 	    /* exit command*/
