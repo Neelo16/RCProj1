@@ -94,7 +94,7 @@ int safeSendUDP(UDPHandler_p TCSHandler, const char *toSend, unsigned int toSend
 
 /* ----------------------- Functions for list cmd -------------------------- */
 int getLanguages(UDPHandler_p TCSHandler, char ***languages){
-    /* Allocates space for language list and store them in there */
+    /* Allocates space for language list and stores them in there */
     char *part;
     int langNumber;
     int i;
@@ -165,7 +165,7 @@ int sendUNQ(TCPHandler_p TRSHandler, UDPHandler_p TCSHandler, char **languages, 
     int total = 0, good = 0, received;
     while(!good && total < 3){ /* Tries 3 times */
 
-        if(strcmp(TRSHandler->language, languages[langName])){ /* If user doesnt know yet where is the specified TRS... */
+        if(strcmp(TRSHandler->language, languages[langName])){ /* If user doesn't yet know where the specified TRS is... */
             /* Send UNQ + languageName */
             received = sprintf(TCSHandler->buffer, "%s %s\n", "UNQ", languages[langName]);
 
@@ -174,12 +174,12 @@ int sendUNQ(TCPHandler_p TRSHandler, UDPHandler_p TCSHandler, char **languages, 
                 continue;
             }
             
-            if(!parseTCSUNR(TCSHandler, ip, port)){ /* If TCS didnt send a valid answer... */
+            if(!parseTCSUNR(TCSHandler, ip, port)){ /* If TCS didn't send a valid answer... */
                 total++;
                 continue;
             }
 
-            good = TCPConnection(TRSHandler, *ip, *port, languages[langName]); /* Try to estabilish a TCP connection with TRS */
+            good = TCPConnection(TRSHandler, *ip, *port, languages[langName]); /* Try to establish a TCP connection with TRS */
             total++;
         }
         else{
@@ -248,7 +248,7 @@ void printWordsReceived(char *buffer){
     for(i = 0; i < N; i++){
         part = strtok(NULL, " ");
         if(part == NULL){
-            printf("TRS said he would send %d words but he only sent %d\n", N, i);
+            printf("TRS said it would send %d words but it only sent %d\n", N, i);
             return;
         }
         printf(" %s", part);
@@ -263,7 +263,7 @@ void handleTextTranslation(TCPHandler_p TRSHandler, char **words, char *ip,int N
     for(i = 0; i < N; i++)
         processedBytes += sprintf(TRSHandler->buffer+processedBytes, " %s", words[i]);
     if(safe_write(TRSHandler->clientFD, TRSHandler->buffer, processedBytes) == -1){               /* Send  text translation request to TRS */
-        puts("Couldnt send data to TRS. Maybe the connection was closed");
+        puts("Couldn't send data to TRS. Maybe the connection was closed");
         return;
     }
  	
@@ -456,7 +456,7 @@ int request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **l
         return langNumber; 
     }
     
-    /* Check if user want to send an invalid file */
+    /* Check if the user wants to send an invalid file */
     if(c == 'f'){
         FILE *f = fopen(filename,"rb");
         if(f == NULL){
@@ -489,7 +489,7 @@ int request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **l
 /* -------------------------------------------------------------------------------------------- */
 
 int TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, const char *language){
-    /* Estabilishes a TCP connection with the TRS server */
+    /* Establishes a TCP connection with the TRS server */
     struct timeval tv; /* timeout */
     struct hostent *addr;
     printf(" %s %d\n", ip, port);
@@ -531,7 +531,7 @@ int main(int argc, char **argv){
     char **languages = NULL; /* Hold the known languages */
     int langNumber = 0; /* Number of languages being hold */
 
-    /* Create TCP socket co communicate with the TRS's */
+    /* Create TCP socket to communicate with the TRS's */
     TRSHandler = (TCPHandler_p) safeMalloc(sizeof(struct TCPHandler));
     
     /* Create UDP socket to communicate with TCS */
@@ -545,12 +545,12 @@ int main(int argc, char **argv){
             break;
         if(!strcmp(cmd, EXITCMD))
             break;
-        else if(!strcmp(cmd, LISTCMD)){ /* if its a list request */
+        else if(!strcmp(cmd, LISTCMD)){ /* if it's a list request */
             if(langNumber)
                 cleanLanguagesList(languages, langNumber);
             langNumber = list(TCSHandler, &languages);
         }
-        else if(!strncmp(cmd, REQCMD, strlen(REQCMD))) /* If its a translation request */
+        else if(!strncmp(cmd, REQCMD, strlen(REQCMD))) /* If it's a translation request */
             langNumber = request(TCSHandler, TRSHandler, cmd, languages, langNumber);
         else
             printf("Invalid command %s\n", cmd);
