@@ -10,7 +10,8 @@ void exitMsg(const char *msg);
 void *safeMalloc(size_t size);
 
 /* Reads from file descriptor until there is no space left in the buffer or the character to_read is found. */
-/* Returns 1 on success (it found the intended character), and 0 otherwise (if to_read was not found after  */
+/* Returns the number of bytes read on success (it found the intended character),                           */
+/* and -1 otherwise (if to_read was not found after                                                         */
 /* buffer_size bytes or if there was an error in read)                                                      */
 /* errno is set if an error occured in read and can be checked                                              */
 int read_until_char(int fd, char *buffer, size_t buffer_size, char to_read);
