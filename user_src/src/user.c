@@ -16,18 +16,18 @@ void cleanUDP(UDPHandler_p handler){
     free(handler);
 }
 
-void cleanLanguagesList(char **languages,int langNumber){
+void cleanLanguagesList(char **languages, int langNumber){
     int i;
     for(i = 0; i < langNumber; i++)
         free(languages[i]);
     free(languages);
 }
 
-void parseTCSOptions(UDPHandler_p TCSHandler,int argc, char **argv){
+void parseTCSOptions(UDPHandler_p TCSHandler, int argc, char **argv){
     char option;
     struct timeval tv; /* timeout for TCS */
     struct hostent *addr;
-    unsigned short int defaultP=1,defaultA=1;
+    unsigned short int defaultP = 1, defaultA = 1;
 
     TCSHandler->clientLen = sizeof(TCSHandler->client);
     if ( (TCSHandler->socket = socket(AF_INET, SOCK_DGRAM,0)) == -1)
@@ -35,14 +35,14 @@ void parseTCSOptions(UDPHandler_p TCSHandler,int argc, char **argv){
 
     tv.tv_sec = 3; /* We wait 3 seconds max for an answer from TCS */
     tv.tv_usec = 0;
-    if (setsockopt(TCSHandler->socket, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) /* Set timeout */
+    if (setsockopt(TCSHandler->socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) /* Set timeout */
         exitMsg("Error in setsockopt");
 
     /* Initialize UDP socket */
     memset((char *) &TCSHandler->client, 0, sizeof(TCSHandler->client));
 
     /* Configure UDP socket and check args for optional address or port setting */
-    while((option = getopt(argc,argv,"n:p:")) != -1){
+    while((option = getopt(argc, argv, "n:p:")) != -1){
         switch (option){
             case 'p': /* Set port */
                 defaultP = 0;
@@ -65,7 +65,7 @@ void parseTCSOptions(UDPHandler_p TCSHandler,int argc, char **argv){
     if(defaultP)
         TCSHandler->client.sin_port = htons(PORT);
     if(defaultA)
-        inet_aton(DEFAULTADDR , &TCSHandler->client.sin_addr);
+        inet_aton(DEFAULTADDR, &TCSHandler->client.sin_addr);
 
     TCSHandler->client.sin_family = AF_INET;
 }
@@ -73,9 +73,9 @@ void parseTCSOptions(UDPHandler_p TCSHandler,int argc, char **argv){
 int safeSendUDP(UDPHandler_p TCSHandler, const char *toSend, unsigned int toSendLen){
     /* This function tries to send a message to TCS and receive an answer.
              If its not succeeded even after three tries, the program exits */
-    int received,tries = 0;
+    int received, tries = 0;
     while(tries < 3){
-        if (sendto(TCSHandler->socket, toSend, toSendLen , 0 , (struct sockaddr *) &TCSHandler->client, TCSHandler->clientLen) == -1)
+        if (sendto(TCSHandler->socket, toSend, toSendLen, 0, (struct sockaddr *) &TCSHandler->client, TCSHandler->clientLen) == -1)
             exitMsg("Error sending message"); /* If there was an error sending the message, exit immediately */
         if ((received = recvfrom(TCSHandler->socket, TCSHandler->buffer, BUFFSIZE-1, 0, (struct sockaddr *) &TCSHandler->client, &TCSHandler->clientLen)) == -1){
             if(errno != ETIMEDOUT && errno != EAGAIN) /* If received timeout its fine, it will try to request data from TCS again */
@@ -100,19 +100,19 @@ int getLanguages(UDPHandler_p TCSHandler, char ***languages){
     int i;
 
     /* ULR N language1 language2 ... languageN */
-    part = strtok(TCSHandler->buffer," "); /* ULR */ 
-    if(part == NULL || strncmp(part,"ULR",3)){
+    part = strtok(TCSHandler->buffer, " "); /* ULR */ 
+    if(part == NULL || strncmp(part, "ULR",3)){
         printf("An error occured when receiving the languages list\n");
         return 0;
     }
-    part = strtok(NULL," "); /* N */
+    part = strtok(NULL, " "); /* N */
     langNumber = atoi(part);
     *languages = (char **) safeMalloc(sizeof(char *)*langNumber);
     for(i = 0; i < langNumber; i++)
         (*languages)[i] = (char *) safeMalloc(sizeof(char)*WORDSIZE);
     for(i = 0; i < langNumber; i++){
         part = strtok(NULL, " "); /* get languagei from buffer */
-        strcpy((*languages)[i],part);
+        strcpy((*languages)[i], part);
     }
     return langNumber;
 }
@@ -122,18 +122,18 @@ int list(UDPHandler_p TCSHandler, char ***languages){
     int i;
 
     /* Send User List Query */
-    if(!safeSendUDP(TCSHandler,"ULQ\n",4)){
+    if(!safeSendUDP(TCSHandler, "ULQ\n",4)){
         printf("Couldn't send request to TCS server.\n");
         return 0;
     }
-    langNumber = getLanguages(TCSHandler,languages);
+    langNumber = getLanguages(TCSHandler, languages);
 
     if(!langNumber)
         printf("No languages available\n");
 
     /* Print languages */
     for(i = 0; i < langNumber; i++)
-        printf(" %d- %s\n",i+1,(*languages)[i]);
+        printf(" %d- %s\n", i+1, (*languages)[i]);
     return langNumber;
 }
 
@@ -162,19 +162,19 @@ int parseTCSUNR(UDPHandler_p TCSHandler, char **ip, unsigned int *port){
 }
 
 int sendUNQ(TCPHandler_p TRSHandler, UDPHandler_p TCSHandler, char **languages, int langName, char **ip, unsigned int *port){
-    int total = 0,good = 0,received;
+    int total = 0, good = 0, received;
     while(!good && total < 3){ /* Tries 3 times */
 
-        if(strcmp(TRSHandler->language,languages[langName])){ /* If user doesnt know yet where is the specified TRS... */
+        if(strcmp(TRSHandler->language, languages[langName])){ /* If user doesnt know yet where is the specified TRS... */
             /* Send UNQ + languageName */
-            received = sprintf(TCSHandler->buffer,"%s %s\n","UNQ",languages[langName]);
+            received = sprintf(TCSHandler->buffer, "%s %s\n", "UNQ", languages[langName]);
 
-            if(!safeSendUDP(TCSHandler,TCSHandler->buffer,received)){ /* If it couldnt get an answer from TCS... */
+            if(!safeSendUDP(TCSHandler, TCSHandler->buffer, received)){ /* If it couldnt get an answer from TCS... */
                 total++;
                 continue;
             }
             
-            if(!parseTCSUNR(TCSHandler,ip, port)){ /* If TCS didnt send a valid answer... */
+            if(!parseTCSUNR(TCSHandler, ip, port)){ /* If TCS didnt send a valid answer... */
                 total++;
                 continue;
             }
@@ -183,9 +183,9 @@ int sendUNQ(TCPHandler_p TRSHandler, UDPHandler_p TCSHandler, char **languages, 
             total++;
         }
         else{
-            good = TCPConnection(TRSHandler, inet_ntoa(TRSHandler->server.sin_addr), ntohs(TRSHandler->server.sin_port),languages[langName]);
+            good = TCPConnection(TRSHandler, inet_ntoa(TRSHandler->server.sin_addr), ntohs(TRSHandler->server.sin_port), languages[langName]);
             if(!good)
-                memset(TRSHandler->language,0,strlen(TRSHandler->language));
+                memset(TRSHandler->language, 0, strlen(TRSHandler->language));
             else{
                 *ip = inet_ntoa(TRSHandler->server.sin_addr);
             }
@@ -207,11 +207,11 @@ char parseRequest(char *cmd, char *filename, char **words,int *langName, int *N)
     |         where c = 't' (in that case args = words to be translated) 
     |             or c = 'f' (in that case args = filename) */
 
-    part = strtok(cmd," "); /* We already know this is "request" */
-    part = strtok(NULL," "); /* N */
+    part = strtok(cmd, " "); /* We already know this is "request" */
+    part = strtok(NULL, " "); /* N */
     *langName = atoi(part)-1;
 
-    if((part = strtok(NULL," ")) == NULL) /* c */
+    if((part = strtok(NULL, " ")) == NULL) /* c */
         return '0';
     c = *part;
     if(c == 'f'){
@@ -219,13 +219,13 @@ char parseRequest(char *cmd, char *filename, char **words,int *langName, int *N)
         if(part == NULL)
             return '0';
         
-        strcpy(filename,part);
+        strcpy(filename, part);
         *(filename+strlen(filename)-1) = '\0';
     }
     else if(c == 't'){
         for(i = 0; i < 10; i++){
-            words[i] = (char *) safeMalloc(sizeof(char)*WORDSIZE);
-            if((part = strtok(NULL," ")) == NULL) /* wordI to translate */
+            words[i] = (char *) safeMalloc(WORDSIZE);
+            if((part = strtok(NULL, " ")) == NULL) /* wordI to translate */
                 break;
             strcpy(words[i],part);
         }
@@ -240,18 +240,18 @@ char parseRequest(char *cmd, char *filename, char **words,int *langName, int *N)
 /* -------------------- Functions for handling text translations ----------------- */
 void printWordsReceived(char *buffer){
     char *part;
-    int N,i;
-    part = strtok(buffer," "); /* "TRR" */
-    part = strtok(NULL," ");   /* "t" */
-    part = strtok(NULL," ");   /* N = number of translated words */
+    int N, i;
+    part = strtok(buffer, " "); /* "TRR" */
+    part = strtok(NULL, " ");   /* "t" */
+    part = strtok(NULL, " ");   /* N = number of translated words */
     N = atoi(part);
     for(i = 0; i < N; i++){
-        part = strtok(NULL," ");
+        part = strtok(NULL, " ");
         if(part == NULL){
-            printf("TRS said he would send %d words but he only sent %d\n",N,i);
+            printf("TRS said he would send %d words but he only sent %d\n", N, i);
             return;
         }
-        printf(" %s",part);
+        printf(" %s", part);
     }
     puts("");
 }
@@ -259,27 +259,27 @@ void printWordsReceived(char *buffer){
 void handleTextTranslation(TCPHandler_p TRSHandler, char **words, char *ip,int N){
     int processedBytes,i;
 
-    processedBytes = sprintf(TRSHandler->buffer, "TRQ t %d",N);
+    processedBytes = sprintf(TRSHandler->buffer, "TRQ t %d", N);
     for(i = 0; i < N; i++)
-        processedBytes += sprintf(TRSHandler->buffer+processedBytes," %s",words[i]);
-    if(safe_write(TRSHandler->clientFD,TRSHandler->buffer,processedBytes) == -1){               /* Send  text translation request to TRS */
+        processedBytes += sprintf(TRSHandler->buffer+processedBytes, " %s", words[i]);
+    if(safe_write(TRSHandler->clientFD, TRSHandler->buffer, processedBytes) == -1){               /* Send  text translation request to TRS */
         puts("Couldnt send data to TRS. Maybe the connection was closed");
         return;
     }
  	
     /* Read TRS's answer */
-    processedBytes = read_until_newline(TRSHandler->clientFD,TRSHandler->buffer,BUFFSIZE);
+    processedBytes = read_until_newline(TRSHandler->clientFD, TRSHandler->buffer, BUFFSIZE);
     if(processedBytes == -1){
         printf("Lost connection with TRS\n");
         return;
     }
     
     *(TRSHandler->buffer+processedBytes) = '\0';
-    if(!strcmp(TRSHandler->buffer,"TRR NTA")){
+    if(!strcmp(TRSHandler->buffer, "TRR NTA")){
         printf("No translation available\n");
         return;     
     }
-    else if(!strcmp(TRSHandler->buffer,"TRR ERR")){
+    else if(!strcmp(TRSHandler->buffer, "TRR ERR")){
         printf("Too many words to translate\n");
         return;     
     }
@@ -289,7 +289,7 @@ void handleTextTranslation(TCPHandler_p TRSHandler, char **words, char *ip,int N
         if(words[i])
             free(words[i]); 
 
-    printf("  %s:",ip);
+    printf("  %s:", ip);
     printWordsReceived(TRSHandler->buffer);
 }
 
@@ -300,9 +300,9 @@ int sendFile(TCPHandler_p TRSHandler, char *filename){
     FILE *file;
 
 
-    file = fopen(filename,"rb");
+    file = fopen(filename, "rb");
     if(!file){
-        printf("File %s does not exist\n",filename);
+        printf("File %s does not exist\n", filename);
         return 0;
     }
 
@@ -310,16 +310,16 @@ int sendFile(TCPHandler_p TRSHandler, char *filename){
         perror("Error reading file");
         return 0;
     }
-    written = sprintf(TRSHandler->buffer, "TRQ f %s %ld ",filename,ftell(file));
+    written = sprintf(TRSHandler->buffer, "TRQ f %s %ld ", filename, ftell(file));
     if(written < 0){
         printf("Error setting up data to send\n");
         return 0;
     }
     size = ftell(file);
-    printf("     %ld Bytes to transmit\n",size);
-    rewind(file);
+    printf("     %ld Bytes to transmit\n", size);
+     rewind(file);
 
-    if(safe_write(TRSHandler->clientFD,TRSHandler->buffer,written) == -1){
+    if(safe_write(TRSHandler->clientFD, TRSHandler->buffer, written) == -1){
         printf("Lost connection with TRS\n");
         return 0;
     }
@@ -334,7 +334,7 @@ int sendFile(TCPHandler_p TRSHandler, char *filename){
         }
         written += bytes_read;
     }
-    if(safe_write(TRSHandler->clientFD,"\n",1) == -1){
+    if(safe_write(TRSHandler->clientFD, "\n", 1) == -1){
         printf("Lost connection with TRS\n");
         return 0;
     }
@@ -345,44 +345,44 @@ int sendFile(TCPHandler_p TRSHandler, char *filename){
 int recvInitialData(TCPHandler_p TRSHandler, char *filename, unsigned long int *size){
     int i=0;
 
-    if(read_until_space(TRSHandler->clientFD,TRSHandler->buffer,4) == -1){/*TRR f filename size */
+    if(read_until_space(TRSHandler->clientFD, TRSHandler->buffer, 4) == -1){/*TRR f filename size */
         printf("Lost connection with TRS\n");
         return 0;
     }
 
     /* to be read: f filename size */
-    if(strcmp(TRSHandler->buffer,"TRR")){
+    if(strcmp(TRSHandler->buffer, "TRR")){
     	printf("Bad answer from TRS\n");
     	return 0;
     }
 
     while(i != 2){
-    	i += read(TRSHandler->clientFD,TRSHandler->buffer,2);
+    	i += read(TRSHandler->clientFD, TRSHandler->buffer, 2);
     	if(!i){
     		printf("Lost connection with TRS\n");
     		return 0;
     	}
     }
     if(*TRSHandler->buffer != 'f'){
-    	if(read_until_newline(TRSHandler->clientFD,TRSHandler->buffer+2,BUFFSIZE) == -1)
+    	if(read_until_newline(TRSHandler->clientFD, TRSHandler->buffer+2, BUFFSIZE) == -1)
     		printf("Lost connection with TRS\n");
-    	else if(!strcmp(TRSHandler->buffer,"NTA"))
+    	else if(!strcmp(TRSHandler->buffer, "NTA"))
         	printf("No translation available\n");           
-        else if(!strcmp(TRSHandler->buffer,"ERR"))
+        else if(!strcmp(TRSHandler->buffer, "ERR"))
         	printf("TRS ERR received. Please request translation again\n");
         else
         	printf("An error occured while receiving file translation. Please repeat the request %s\n",TRSHandler->buffer);
         return 0;
     }
 
-    if(read_until_space(TRSHandler->clientFD,filename,100) == -1){
+    if(read_until_space(TRSHandler->clientFD, filename, 100) == -1){
     	printf("Lost connection with TRS\n");
     	return 0;
     }
 
     i = 0;
     while(1){ /* Receive file size */
-        while(!read(TRSHandler->clientFD,TRSHandler->buffer+i,1));
+        while(!read(TRSHandler->clientFD, TRSHandler->buffer+i, 1));
         if(*(TRSHandler->buffer+i) == ' ')
             break;
         i += 1;
@@ -401,13 +401,13 @@ int recvFile(TCPHandler_p TRSHandler,char *filename, unsigned long int size){
 	if(file == NULL)
 		return 0;
 	while(total < size){
-        processedBytes = read(TRSHandler->clientFD,TRSHandler->buffer,MIN(BUFFSIZE, size - total));
+        processedBytes = read(TRSHandler->clientFD, TRSHandler->buffer, MIN(BUFFSIZE, size - total));
         if(!processedBytes){
             perror("Error in read");
             return 0;
         }
         total += processedBytes;
-        fwrite(TRSHandler->buffer,1,processedBytes,file);
+        fwrite(TRSHandler->buffer, 1, processedBytes, file);
     }
     fclose(file);
     return 1;
@@ -416,32 +416,32 @@ int recvFile(TCPHandler_p TRSHandler,char *filename, unsigned long int size){
 void handleFileTranslation(TCPHandler_p TRSHandler, char *filename){
     unsigned long int size;
 
-    if(!sendFile(TRSHandler,filename))
+    if(!sendFile(TRSHandler, filename))
         return;
 
-    if(!recvInitialData(TRSHandler,filename,&size)) /* TRR f filename size */
+    if(!recvInitialData(TRSHandler, filename, &size)) /* TRR f filename size */
         return;
 
     
-    if(!recvFile(TRSHandler,filename,size)){
-        printf("Error trying to download this file: %s\n",filename);
+    if(!recvFile(TRSHandler, filename, size)){
+        printf("Error trying to download this file: %s\n", filename);
         return;
     }
 
-    printf("received file %s\n     %ld Bytes\n",filename,size);
+    printf("received file %s\n     %ld Bytes\n", filename, size);
         
 }
 
 int request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **languages, int langNumber){
     char *words[10];    
     int i = 0;
-    int langName,N=0;
+    int langName, N=0;
     char filename[100];
     char c;
     char *ip = NULL;
     unsigned int port;
 
-    c = parseRequest(cmd,filename,words,&langName,&N);
+    c = parseRequest(cmd, filename, words, &langName, &N);
     if(c == '0'){
         puts("Not enough arguments or invalid request");
         return langNumber;
@@ -470,16 +470,16 @@ int request(UDPHandler_p TCSHandler,TCPHandler_p TRSHandler, char *cmd, char **l
     if(!sendUNQ(TRSHandler,TCSHandler,languages,langName,&ip,&port)){ /* Asks TCS for TRS location */
         printf("An error occured while requesting TRS server address. Sending list request again...\n");
         if(langNumber)
-            cleanLanguagesList(languages,langNumber);
+            cleanLanguagesList(languages, langNumber);
         printf("\n\n\n");
-        langNumber = list(TCSHandler,&languages);
+        langNumber = list(TCSHandler, &languages);
         return langNumber;
     }
 
     if(c == 't')
-        handleTextTranslation(TRSHandler,words,ip,N);
+        handleTextTranslation(TRSHandler, words, ip, N);
     else
-        handleFileTranslation(TRSHandler,filename);
+        handleFileTranslation(TRSHandler, filename);
         
     if(TRSHandler->clientFD)
         close(TRSHandler->clientFD);
@@ -492,9 +492,9 @@ int TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, const
     /* Estabilishes a TCP connection with the TRS server */
     struct timeval tv; /* timeout */
     struct hostent *addr;
-    printf(" %s %d\n",ip,port);
+    printf(" %s %d\n", ip, port);
 
-    if ((TRSHandler->clientFD = socket(AF_INET, SOCK_STREAM,0)) == -1)
+    if ((TRSHandler->clientFD = socket(AF_INET, SOCK_STREAM, 0)) == -1)
         exitMsg("Error creating TCP socket");
 
     /* Configure settings of the TCP socket */
@@ -537,29 +537,29 @@ int main(int argc, char **argv){
     /* Create UDP socket to communicate with TCS */
     TCSHandler = (UDPHandler_p) safeMalloc(sizeof(struct UDPHandler));
 
-    parseTCSOptions(TCSHandler,argc,argv);
+    parseTCSOptions(TCSHandler, argc, argv);
 
     /* Repeatedly read command, execute command and print results */
     while(1){
-        if(fgets(cmd,CMDSIZE,stdin) == NULL)
+        if(fgets(cmd, CMDSIZE, stdin) == NULL)
             break;
-        if(!strcmp(cmd,EXITCMD))
+        if(!strcmp(cmd, EXITCMD))
             break;
-        else if(!strcmp(cmd,LISTCMD)){ /* if its a list request */
+        else if(!strcmp(cmd, LISTCMD)){ /* if its a list request */
             if(langNumber)
-                cleanLanguagesList(languages,langNumber);
-            langNumber = list(TCSHandler,&languages);
+                cleanLanguagesList(languages, langNumber);
+            langNumber = list(TCSHandler, &languages);
         }
-        else if(!strncmp(cmd,REQCMD,strlen(REQCMD))) /* If its a translation request */
-            langNumber = request(TCSHandler,TRSHandler,cmd,languages,langNumber);
+        else if(!strncmp(cmd, REQCMD, strlen(REQCMD))) /* If its a translation request */
+            langNumber = request(TCSHandler, TRSHandler, cmd, languages, langNumber);
         else
-            printf("Invalid command %s\n",cmd);
+            printf("Invalid command %s\n", cmd);
 
     }
 
     printf("Cleaning and exiting...\n");
     if(langNumber)
-        cleanLanguagesList(languages,langNumber);
+        cleanLanguagesList(languages, langNumber);
     cleanUDP(TCSHandler);
     free(TRSHandler);
     return 0;
