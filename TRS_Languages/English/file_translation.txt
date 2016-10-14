@@ -1,0 +1,5 @@
+eat.jpg comer.jpg
+kitties.jpg gatos.jpg
+morning.jpg dia.jpg
+rain.jpg chuva.jpg
+time.jpg horas.jpg
