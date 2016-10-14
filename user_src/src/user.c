@@ -162,20 +162,6 @@ int parseTCSUNR(UDPHandler_p TCSHandler, char **ip, unsigned int *port){
     return 1;
 }
 
-/* FIXME this function will probably be removed. as soon as tomaso's put those functions in util.c */
-int checkReceive(TCPHandler_p TRSHandler, int toReceive){
-    int total = 0,received = 0;
-    while(total != toReceive){
-        received= read(TRSHandler->clientFD,TRSHandler->buffer+total,toReceive);
-        if(received == -1){
-            printf("Couldnt receive enough data\n");
-            return 0;
-        }
-        total += received;
-    }
-    return 1;
-}
-
 int sendUNQ(TCPHandler_p TRSHandler, UDPHandler_p TCSHandler, char **languages, int langName, char **ip, unsigned int *port){
     int total = 0,good = 0,received;
     while(!good && total < 3){ /* Tries 3 times */
@@ -192,7 +178,7 @@ int sendUNQ(TCPHandler_p TRSHandler, UDPHandler_p TCSHandler, char **languages, 
             good = TCPConnection(TRSHandler, *ip, *port, languages[langName]); /* Try to estabilish a TCP connection with TRS */
         }
         else{
-            good = !connect(TRSHandler->clientFD, (struct sockaddr *) &TRSHandler->server, TRSHandler->serverSize); /* FIXME connect != TCPConnection */
+            good = !connect(TRSHandler->clientFD, (struct sockaddr *) &TRSHandler->server, TRSHandler->serverSize); /* FIXME */
             if(!good)
                 memset(TRSHandler->language,0,strlen(TRSHandler->language));
         }
