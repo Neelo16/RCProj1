@@ -165,6 +165,7 @@ void handle_requests(int TRS_port) {
     }
 
     signal(SIGINT, handle_sigint);
+    signal(SIGPIPE, SIG_IGN);
 
     while (running && !interrupted) {
         fd_set input_sources;
@@ -209,7 +210,7 @@ void handle_requests(int TRS_port) {
                 report_invalid_request(client_socket);
             }
 
-            sleep(5);
+            /* sleep(5); */
             close(client_socket);
         } else if (FD_ISSET(fileno(stdin), &input_sources)) {
             char buffer[BUFFER_SIZE];

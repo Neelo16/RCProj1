@@ -35,7 +35,7 @@ int read_until_char(int fd, char *buffer, size_t buffer_size, char to_read) {
 
         int received = read(fd, &read_char, 1);
 
-        if (received == -1) {
+        if (received == -1 || errno != 0) {
             return -1;
         }
         if (read_char == to_read) {
@@ -63,7 +63,7 @@ int safe_write(int fd, char const *msg, unsigned long msg_len) {
     errno = 0;
     while (bytes_written < msg_len) {
         int sent = write(fd, msg + bytes_written, msg_len - bytes_written);
-        if (sent == -1) {
+        if (sent == -1 || errno != 0) {
             return -1;
         }
         bytes_written += sent;
