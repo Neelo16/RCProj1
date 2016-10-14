@@ -160,7 +160,8 @@ void listLanguages(trs_list list, char *aux_r)
     }
     puts("");
 
-    *(aux_r+auxRLen) = '\0';
+    *(aux_r+auxRLen) = '\n';
+    *(aux_r+auxRLen+1) = '\0';
 }
 
 void showList(trs_list list)

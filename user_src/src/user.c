@@ -110,10 +110,25 @@ int getLanguages(UDPHandler_p TCSHandler, char ***languages){
     *languages = (char **) safeMalloc(sizeof(char *)*langNumber);
     for(i = 0; i < langNumber; i++)
         (*languages)[i] = (char *) safeMalloc(sizeof(char)*WORDSIZE);
-    for(i = 0; i < langNumber; i++){
+    for(i = 0; i < langNumber - 1; i++){
         part = strtok(NULL, " "); /* get languagei from buffer */
+        if (part == NULL) {
+            fprintf(stderr, "TCS sent an invalid reply\n");
+            cleanLanguagesList(*languages, langNumber);
+            return 0;
+        }
         strcpy((*languages)[i], part);
     }
+
+    part = strtok(NULL, "\n"); /* last word ends in \n */
+    if (part)
+        strcpy((*languages)[i], part);
+    else {
+        fprintf(stderr, "TCS sent an invalid reply\n");
+        cleanLanguagesList(*languages, langNumber);
+        return 0;
+    }
+
     return langNumber;
 }
 
