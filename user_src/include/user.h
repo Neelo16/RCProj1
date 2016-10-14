@@ -34,7 +34,7 @@ void cleanUDP(UDPHandler_p handler);
 void cleanTCP(TCPHandler_p handler);
 
 
-void request(UDPHandler_p TCSHandler, TCPHandler_p TRSHandler, char *cmd, char **languages, int langNumber);
+int request(UDPHandler_p TCSHandler, TCPHandler_p TRSHandler, char *cmd, char **languages, int langNumber);
 int list(UDPHandler_p TCSHandler, char ***languages);
 
 int safeSendUDP(UDPHandler_p TCSHandler, const char *toSend, unsigned int toSendLen);
