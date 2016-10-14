@@ -189,7 +189,7 @@ void handle_requests(int TRS_port) {
 
         if(FD_ISSET(TRS_socket, &input_sources)){ /* FIXME */
             struct sockaddr_in client_addr;
-            unsigned client_len;
+            unsigned client_len = sizeof(client_addr);
             int client_socket = accept(TRS_socket, (struct sockaddr*)&client_addr, &client_len);
             char buffer[BUFFER_SIZE];
             char request_type = '\0';
