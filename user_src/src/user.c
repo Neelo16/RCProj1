@@ -54,7 +54,7 @@ void parseTCSOptions(UDPHandler_p TCSHandler, int argc, char **argv){
                     TCSHandler->client.sin_addr.s_addr = ((struct in_addr *) (addr->h_addr_list[0]))->s_addr;
                 }
                 else
-                    printf("Invalid hostname\n");   /*If its not a valid hostname, keep the default (localhost) */
+                    fprintf(stderr, "Invalid hostname\n");   /*If its not a valid hostname, keep the default (localhost) */
                 break;
             case '?':
                 fprintf (stderr, "Unknown option `-%c'.\n", optopt);
