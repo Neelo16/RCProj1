@@ -41,7 +41,6 @@ int safeSendUDP(UDPHandler_p TCSHandler, const char *toSend, unsigned int toSend
 int TCPConnection(TCPHandler_p TRSHandler, const char *ip, const int port, const char *language);
 int getLanguages(UDPHandler_p TCSHandler, char ***languages);
 
-int checkReceive(TCPHandler_p TRSHandler, int toReceive);
 int sendUNQ(TCPHandler_p TRSHandler, UDPHandler_p TCSHandler, char **languages, int langName, char **ip, unsigned int *port);
 int sendFile(TCPHandler_p TRSHandler, char *filename);
 int recvInitialData(TCPHandler_p TRSHandler, char *filename, unsigned long int *size);

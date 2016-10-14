@@ -162,20 +162,6 @@ int parseTCSUNR(UDPHandler_p TCSHandler, char **ip, unsigned int *port){
     return 1;
 }
 
-/* FIXME this function will probably be removed. as soon as tomaso's put those functions in util.c */
-int checkReceive(TCPHandler_p TRSHandler, int toReceive){
-    int total = 0,received = 0;
-    while(total != toReceive){
-        received= read(TRSHandler->clientFD,TRSHandler->buffer+total,toReceive);
-        if(received == -1){
-            printf("Couldnt receive enough data\n");
-            return 0;
-        }
-        total += received;
-    }
-    return 1;
-}
-
 int sendUNQ(TCPHandler_p TRSHandler, UDPHandler_p TCSHandler, char **languages, int langName, char **ip, unsigned int *port){
     int total = 0,good = 0,received;
     while(!good && total < 3){ /* Tries 3 times */
@@ -192,7 +178,7 @@ int sendUNQ(TCPHandler_p TRSHandler, UDPHandler_p TCSHandler, char **languages, 
             good = TCPConnection(TRSHandler, *ip, *port, languages[langName]); /* Try to estabilish a TCP connection with TRS */
         }
         else{
-            good = !connect(TRSHandler->clientFD, (struct sockaddr *) &TRSHandler->server, TRSHandler->serverSize); /* FIXME connect != TCPConnection */
+            good = !connect(TRSHandler->clientFD, (struct sockaddr *) &TRSHandler->server, TRSHandler->serverSize); /* FIXME */
             if(!good)
                 memset(TRSHandler->language,0,strlen(TRSHandler->language));
         }
@@ -371,7 +357,6 @@ int recvInitialData(TCPHandler_p TRSHandler, char *filename, unsigned long int *
     		printf("Lost connection with TRS\n");
     		return 0;
     	}
-    	printf(":)\n");
     }
     if(*TRSHandler->buffer != 'f'){
     	if(!read_until_newline(TRSHandler->clientFD,TRSHandler->buffer+2,BUFFSIZE))
@@ -403,12 +388,28 @@ int recvInitialData(TCPHandler_p TRSHandler, char *filename, unsigned long int *
     return 1;
 }
 
+int recvFile(TCPHandler_p TRSHandler,char *filename, unsigned long int size){
+	unsigned long int total = 0;
+	int processedBytes;
+	FILE *file = fopen(filename, "wb");
+
+	if(file == NULL)
+		return 0;
+	while(total < size){
+        processedBytes = read(TRSHandler->clientFD,TRSHandler->buffer,MIN(BUFFSIZE, size - total));
+        if(!processedBytes){
+            perror("Error in read");
+            return 0;
+        }
+        total += processedBytes;
+        fwrite(TRSHandler->buffer,1,processedBytes,file);
+    }
+    fclose(file);
+    return 1;
+}
+
 void handleFileTranslation(TCPHandler_p TRSHandler, char *filename){
     unsigned long int size;
-    int processedBytes;
-    int total = 0;
-    FILE *file;
-
 
     if(!sendFile(TRSHandler,filename))
         return;
@@ -416,25 +417,13 @@ void handleFileTranslation(TCPHandler_p TRSHandler, char *filename){
     if(!recvInitialData(TRSHandler,filename,&size)) /* TRR f filename size */
         return;
 
-    file = fopen(filename, "wb");
-    if(file == NULL){
+    
+    if(!recvFile(TRSHandler,filename,size)){
         printf("Error trying to download this file: %s\n",filename);
         return;
     }
 
-    while(1){
-        processedBytes = read(TRSHandler->clientFD,TRSHandler->buffer,MIN(BUFFSIZE, size - total));
-        if(!processedBytes){
-            perror("Erro");
-            return;
-        }
-        total += processedBytes;
-        fwrite(TRSHandler->buffer,1,processedBytes,file);
-        if(total >= size)
-            break;
-    }
     printf("received file %s\n     %ld Bytes\n",filename,size);
-    fclose(file);
         
 }
 
