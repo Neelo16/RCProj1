@@ -12,7 +12,7 @@
 #include "util.h"
 
 
-void getBufferLanguage(char buffer[], char language2[])
+int getBufferLanguage(char buffer[], char language2[])
 {
 	/* Gets language from buffer. language2 will have the result and th errors 
 	to be sent*/
@@ -32,7 +32,7 @@ void getBufferLanguage(char buffer[], char language2[])
 
 	if(language == NULL){
 		fprintf(stderr, "User sent an invalid command\n");
-		return;	
+		return 0;	
 	}
  
     /* The request is not properly formatted if the serverFD
@@ -49,8 +49,12 @@ void getBufferLanguage(char buffer[], char language2[])
     else
     {
         language = strtok(NULL, " \n"); /*language*/
-        strcpy(language2,language);
+        if(language != NULL){
+        	strcpy(language2,language);
+        	return 1;
+        }
     }
+    return 0;
 }
 
 void getTRSInfo(trs_list list, char* language, char reply[])
@@ -88,11 +92,10 @@ void checkTRS(trs_list list, char buffer[], char reply[])
     char* port;
     trs_item trs = (trs_item) safeMalloc(sizeof(struct trsItem));
 
-    getBufferLanguage(buffer, language);
-    
     /*error case*/
-    if(!strcmp(language, "SRR ERR\n"))
-        strcpy(reply, language);
+    if(!getBufferLanguage(buffer, language) || !strcmp(language, "SRR ERR\n")){
+    	strcpy(reply,"SRR ERR\n");
+    }   
     else
     {
         /* checks if the TRS is already in the server_list*/

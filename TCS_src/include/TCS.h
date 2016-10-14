@@ -7,7 +7,7 @@
 
 /* Gets language from buffer. language2 will have the result and th errors 
 to be sent*/
-void getBufferLanguage(char buffer[], char language2[]);
+int getBufferLanguage(char buffer[], char language2[]);
 
 /*Receives the language requested by the serverFD and finds the TRS server*/
 void getTRSInfo(trs_list list, char* language, char reply[]);
