@@ -371,7 +371,6 @@ int recvInitialData(TCPHandler_p TRSHandler, char *filename, unsigned long int *
     		printf("Lost connection with TRS\n");
     		return 0;
     	}
-    	printf(":)\n");
     }
     if(*TRSHandler->buffer != 'f'){
     	if(!read_until_newline(TRSHandler->clientFD,TRSHandler->buffer+2,BUFFSIZE))
@@ -403,12 +402,28 @@ int recvInitialData(TCPHandler_p TRSHandler, char *filename, unsigned long int *
     return 1;
 }
 
+int recvFile(TCPHandler_p TRSHandler,char *filename, unsigned long int size){
+	unsigned long int total = 0;
+	int processedBytes;
+	FILE *file = fopen(filename, "wb");
+
+	if(file == NULL)
+		return 0;
+	while(total < size){
+        processedBytes = read(TRSHandler->clientFD,TRSHandler->buffer,MIN(BUFFSIZE, size - total));
+        if(!processedBytes){
+            perror("Error in read");
+            return 0;
+        }
+        total += processedBytes;
+        fwrite(TRSHandler->buffer,1,processedBytes,file);
+    }
+    fclose(file);
+    return 1;
+}
+
 void handleFileTranslation(TCPHandler_p TRSHandler, char *filename){
     unsigned long int size;
-    int processedBytes;
-    int total = 0;
-    FILE *file;
-
 
     if(!sendFile(TRSHandler,filename))
         return;
@@ -416,25 +431,13 @@ void handleFileTranslation(TCPHandler_p TRSHandler, char *filename){
     if(!recvInitialData(TRSHandler,filename,&size)) /* TRR f filename size */
         return;
 
-    file = fopen(filename, "wb");
-    if(file == NULL){
+    
+    if(!recvFile(TRSHandler,filename,size)){
         printf("Error trying to download this file: %s\n",filename);
         return;
     }
 
-    while(1){
-        processedBytes = read(TRSHandler->clientFD,TRSHandler->buffer,MIN(BUFFSIZE, size - total));
-        if(!processedBytes){
-            perror("Erro");
-            return;
-        }
-        total += processedBytes;
-        fwrite(TRSHandler->buffer,1,processedBytes,file);
-        if(total >= size)
-            break;
-    }
     printf("received file %s\n     %ld Bytes\n",filename,size);
-    fclose(file);
         
 }
 
