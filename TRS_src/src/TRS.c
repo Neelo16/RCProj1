@@ -121,7 +121,6 @@ int register_language(unsigned TRS_port, char const *TCS_name, unsigned TCS_port
         bytes_sent += received;
     }
 
-    /* FIXME We need to maybe check if we received everything? */
     bytes_received = recvfrom(TCS_socket, buffer, sizeof(buffer), 0,
                               (struct sockaddr*)&TCS_addr, &addrlen);
 
@@ -164,7 +163,7 @@ void handle_requests(int TRS_port) {
     }
 
     signal(SIGINT, handle_sigint);
-    signal(SIGPIPE, SIG_IGN);
+    signal(SIGPIPE, SIG_IGN); /* If something goes wrong with a socket, we don't want to crash */
 
     while (running && !interrupted) {
         fd_set input_sources;
