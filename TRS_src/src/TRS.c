@@ -270,7 +270,6 @@ void report_invalid_request(int client_socket) {
 
 char get_request_type(int client_socket) {
     char buffer[BUFFER_SIZE];
-    int bytes_read = 0;
     memset((void*)buffer, '\0', sizeof(buffer));
     if (!read_until_space(client_socket, buffer, sizeof(buffer)) || strcmp(buffer, "TRQ")) {
         report_invalid_request(client_socket);
@@ -289,7 +288,6 @@ void handle_text_translation(int client_socket) {
     char buffer[BUFFER_SIZE];
     size_t response_len = 0;
     int num_words = 0;
-    size_t bytes_written = 0;
 
     if (!read_until_space(client_socket, buffer, sizeof(buffer))) {
         report_invalid_request(client_socket);
