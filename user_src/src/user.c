@@ -102,7 +102,7 @@ int getLanguages(UDPHandler_p TCSHandler, char ***languages){
     /* ULR N language1 language2 ... languageN */
     part = strtok(TCSHandler->buffer, " "); /* ULR */ 
     if(part == NULL || strncmp(part, "ULR",3)){
-        printf("An error occured when receiving the languages list\n");
+        fprintf(stderr, "An error occured when receiving the languages list\n");
         return 0;
     }
     part = strtok(NULL, " "); /* N */
@@ -168,9 +168,12 @@ int parseTCSUNR(UDPHandler_p TCSHandler, char **ip, unsigned int *port){
     if(!strcmp(*ip,"EOF\n"))
         return 0;
     
-    part = strtok(NULL, " ");
-    if (part == NULL) /* port */
+    part = strtok(NULL, "\n"); /* port number should end in \n */
+    if (!part)
+	{
+        fprintf(stderr, "TCS sent an invalid reply\n");
         return 0;
+    }
 
     *port = atoi(part);
     return 1;
@@ -424,7 +427,17 @@ int recvFile(TCPHandler_p TRSHandler,char *filename, unsigned long int size){
         total += processedBytes;
         fwrite(TRSHandler->buffer, 1, processedBytes, file);
     }
+
+    /*TRS should have sent a newline after the file data */
+    processedBytes = 0;
     fclose(file);
+    while(!processedBytes){
+    	processedBytes = read(TRSHandler->clientFD, TRSHandler->buffer, 1);
+		if(processedBytes == -1){
+			perror("TCS didnt send newline. File might be corrupted");
+			return 0;
+		}
+    }
     return 1;
 }
 
