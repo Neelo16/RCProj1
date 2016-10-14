@@ -52,11 +52,11 @@ void getBufferLanguage(char buffer[], char language2[])
     }
 }
 
-void getTRSInfo(trs_list list, char* language, char repply[])
+void getTRSInfo(trs_list list, char* language, char reply[])
 {
 	/*Receives the language requested by the serverFD and finds the TRS server*/
 
-	int repplyLen = 0;
+	int replyLen = 0;
     trs_item trs = (trs_item) safeMalloc(sizeof(struct trsItem));
 	
 
@@ -66,18 +66,18 @@ void getTRSInfo(trs_list list, char* language, char repply[])
     if( trs == NULL)
     {
     	destroyTRS(trs);
-        strcpy(repply, "UNR EOF\n");
+        strcpy(reply, "UNR EOF\n");
     }
 
 	/* The trs was found */
     else
     {
-    	repplyLen = sprintf(repply, "UNR ");
-    	repplyLen = sprintf(repply + repplyLen,"%s %d\n", getIp(trs),getPort(trs));
+    	replyLen = sprintf(reply, "UNR ");
+    	replyLen = sprintf(reply + replyLen,"%s %d\n", getIp(trs),getPort(trs));
     }    
 }
 
-void checkTRS(trs_list list, char buffer[], char repply[])
+void checkTRS(trs_list list, char buffer[], char reply[])
 {
 	/*Verefies if a trs exists with a language requested on the buffer.*/
 
@@ -90,7 +90,7 @@ void checkTRS(trs_list list, char buffer[], char repply[])
     
     /*error case*/
     if(!strcmp(language, "SRR ERR\n"))
-        strcpy(repply, language);
+        strcpy(reply, language);
     else
     {
         /* checks if the trs is already in the server_list*/
@@ -106,16 +106,16 @@ void checkTRS(trs_list list, char buffer[], char repply[])
            
             addTRSItem(list, trs);
 
-            strcpy(repply, "SRR OK\n");            
+            strcpy(reply, "SRR OK\n");            
         }
         /* otherwise sends status not ok*/
         else
-            strcpy(repply, "SRR NOK\n");
+            strcpy(reply, "SRR NOK\n");
     }
 }
 
 
-void stopTranslating(trs_list list, char buffer[], char repply[])
+void stopTranslating(trs_list list, char buffer[], char reply[])
 {
 	/* When the trs stops translating a language, ths tcs will verify if it is in the trs_list
 	and if it is in fact it removes from the list. */
@@ -129,7 +129,7 @@ void stopTranslating(trs_list list, char buffer[], char repply[])
     /* error case sends status not ok*/
     if(!strcmp(language, "SUR ERR\n")) 
     {
-        strcpy(repply, "SUR NOK\n");
+        strcpy(reply, "SUR NOK\n");
 
         destroyTRS(trs);
     }
@@ -137,7 +137,7 @@ void stopTranslating(trs_list list, char buffer[], char repply[])
     {
         trs = findTRS(list, language); /* tries to find trs in the tres list*/
 
-        strcpy(repply, "SUR OK\n");
+        strcpy(reply, "SUR OK\n");
 
         if(trs == NULL)
             destroyTRS(trs);
@@ -165,7 +165,7 @@ int main(int argc, const char **argv)  {
     int received = 0;
     unsigned int addrlen;
     char buffer[MAX];
-	char repply[MAX];
+	char reply[MAX];
     char language[MAX];
     trs_list server_list;
     fd_set rfds;
@@ -237,8 +237,8 @@ int main(int argc, const char **argv)  {
 	        	/* If the format of the buffer is not correct. */
 	            if(strlen(buffer) > 4) 
 	            {
-	                strcpy(repply,"URR\n");
-	                error = sendto(serverFD, repply, 4, 0, (struct sockaddr*) &clientaddr, addrlen);
+	                strcpy(reply,"URR\n");
+	                error = sendto(serverFD, reply, 4, 0, (struct sockaddr*) &clientaddr, addrlen);
 
 	                if(error == -1)
 	                	finishProgram(&serverFD, server_list, "An error occurred on sendto");
@@ -247,8 +247,8 @@ int main(int argc, const char **argv)  {
 	            /*There are no TRS in the list*/
 	            else if( sizeList(server_list) == 0) 
 	            {
-	                strcpy(repply,"ULR EOF\n");
-	                error = sendto(serverFD, repply, 8, 0, (struct sockaddr*) &clientaddr, addrlen);
+	                strcpy(reply,"ULR EOF\n");
+	                error = sendto(serverFD, reply, 8, 0, (struct sockaddr*) &clientaddr, addrlen);
 
 	                if(error == -1)
 	                	finishProgram(&serverFD, server_list, "An error occurred on sendto");
@@ -256,8 +256,8 @@ int main(int argc, const char **argv)  {
 	            else
 	            {
 	            	/* gets the languages in the TRS list*/
-	                listLanguages(server_list, repply); 
-	                error = sendto(serverFD, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);
+	                listLanguages(server_list, reply); 
+	                error = sendto(serverFD, reply, strlen(reply), 0, (struct sockaddr*) &clientaddr, addrlen);
 
 	                if(error == -1)
 	                	finishProgram(&serverFD, server_list, "An error occurred on sendto");
@@ -269,8 +269,8 @@ int main(int argc, const char **argv)  {
 	            getBufferLanguage(buffer, language); 
 	            
 	            /* looks for the language in trs list and returs its info */
-	            getTRSInfo( server_list, language, repply);
-	            error = sendto(serverFD, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);
+	            getTRSInfo( server_list, language, reply);
+	            error = sendto(serverFD, reply, strlen(reply), 0, (struct sockaddr*) &clientaddr, addrlen);
 
 	            if(error == -1)
 	              	finishProgram(&serverFD, server_list, "An error occurred on sendto");
@@ -279,10 +279,10 @@ int main(int argc, const char **argv)  {
 	        else if(!strncmp( buffer, "SRG", 3))
 	        {
 	            /*confirms if the trs is in server_list*/
-	            checkTRS(server_list, buffer, repply);
+	            checkTRS(server_list, buffer, reply);
 
 	            /*sends status to TRS*/
-	            error = sendto(serverFD, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);
+	            error = sendto(serverFD, reply, strlen(reply), 0, (struct sockaddr*) &clientaddr, addrlen);
 
 	            if(error == -1)
 	              	finishProgram(&serverFD, server_list, "An error occurred on sendto");
@@ -293,9 +293,9 @@ int main(int argc, const char **argv)  {
 	            /* if the message was received successfuly the TCS looks for the trs in the 
 	             * server_list and deletes it if it exist in server_list. Otherwise the status
 	             * is NOK.*/
-	            stopTranslating(server_list, buffer, repply);
+	            stopTranslating(server_list, buffer, reply);
 	            
-	            error = sendto(serverFD, repply, strlen(repply), 0, (struct sockaddr*) &clientaddr, addrlen);
+	            error = sendto(serverFD, reply, strlen(reply), 0, (struct sockaddr*) &clientaddr, addrlen);
 
 	            if(error == -1)
 	              	finishProgram(&serverFD, server_list, "An error occurred on sendto");
@@ -305,9 +305,9 @@ int main(int argc, const char **argv)  {
 	    /* exit command*/
 	    else if(FD_ISSET(0, &rfds)) 
 	   	{
-	   		scanf("%s", repply);
+	   		scanf("%s", reply);
 
-	   		if(!strcmp(repply, "exit"))
+	   		if(!strcmp(reply, "exit"))
 	   			break;
 	   	}
     }
