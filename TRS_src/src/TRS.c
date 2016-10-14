@@ -260,7 +260,9 @@ int get_text_translation(char const *untranslated, char *translated) {
 
 void report_invalid_request(int client_socket) {
     if (client_socket != -1) {
-        safe_write(client_socket, "TRR ERR\n", sizeof("TRR ERR")); // FIXME?
+        if (safe_write(client_socket, "TRR ERR\n", sizeof("TRR ERR")) == -1) {
+            perror("Failed to send message to client");
+        }
     }
     puts("Received badly formatted request from client.");
 }
@@ -301,7 +303,9 @@ void handle_text_translation(int client_socket) {
     }
 
     if (num_words == 0) {
-        safe_write(client_socket, "TRR t 0\n", sizeof("TRR t 0\n")); // FIXME
+        if (safe_write(client_socket, "TRR t 0\n", sizeof("TRR t 0\n")) == -1) {
+            perror("Failed to send message to client");
+        }
         return;
     }
 
@@ -341,8 +345,9 @@ void handle_text_translation(int client_socket) {
     putchar('\n');
 
     response_len = strlen(response);
-    safe_write(client_socket, response, response_len);
-    safe_write(client_socket, "\n", 1);
+    if (safe_write(client_socket, response, response_len) == -1 || safe_write(client_socket, "\n", 1) == -1) {
+        perror("Failed to send message to client");
+    }
 }
 
 void handle_file_translation(int client_socket) {
@@ -412,17 +417,29 @@ void handle_file_translation(int client_socket) {
         char response[BUFFER_SIZE];
         unsigned long response_size = sprintf(response, "TRR f %s %lu ", translated_filename, translated_file_size);
 
-        safe_write(client_socket, response, response_size);
+        if (safe_write(client_socket, response, response_size) == -1) {
+            perror("Failed to send message to client");
+            return;
+        }
 
         printf("Sending file %s (%lu bytes).\n", translated_filename, (unsigned long) translated_file_size);
 
         bytes_written = 0;
         while (bytes_written < translated_file_size) {
+            int written = 0;
             response_size = fread(response, 1, BUFFER_SIZE, translated_file);
-            bytes_written += write(client_socket, response, response_size);
+            written = write(client_socket, response, response_size);
+            if (written == -1) {
+                perror("Failed to send message to client");
+                return;
+            }
+            bytes_written += written;
         }
 
-        while (write(client_socket, "\n", 1) != 1) continue;
+        if (safe_write(client_socket, "\n", 1) == -1) {
+            perror("Failed to send message to client");
+            return;
+        }
 
         fclose(translated_file);
         puts("File sent.");
