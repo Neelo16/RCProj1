@@ -198,8 +198,6 @@ void handle_requests(int TRS_port) {
             printf("Receiving request from %s port %d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
             request_type = get_request_type(client_socket);
-
-
             if (request_type == 't') {
                 handle_text_translation(client_socket);
             } else if (request_type == 'f') {
@@ -208,7 +206,6 @@ void handle_requests(int TRS_port) {
                 report_invalid_request(client_socket);
             }
 
-            /* sleep(5); */
             close(client_socket);
         } else if (FD_ISSET(fileno(stdin), &input_sources)) {
             char buffer[BUFFER_SIZE];
@@ -307,14 +304,16 @@ void handle_text_translation(int client_socket) {
 
     response_len = sprintf(response, "TRR t %d", num_words);
 
+    /* We need to store the untranslated words so we can output them to the screen */
     for (i = 0; i < num_words - 1; i++) {
         if (read_until_space(client_socket, words[i], MAX_WORD_LEN) == -1) {
             report_invalid_request(client_socket);
             return;
         }
     }
-
-    if (read_until_newline(client_socket, words[num_words-1], MAX_WORD_LEN) == -1) { /* Last words ends in a newline */
+    
+    /* Last word ends in a newline */
+    if (read_until_newline(client_socket, words[num_words-1], MAX_WORD_LEN) == -1) { 
         report_invalid_request(client_socket);
         return;
     }
@@ -327,7 +326,7 @@ void handle_text_translation(int client_socket) {
     for (i = 0; i < num_words; i++) {
         char translated_word[MAX_WORD_LEN+1];
         if (!get_text_translation(words[i], translated_word)) {
-            fputs(" (no translation)", stdin);
+            printf(" (no translation)");
             response_len = sprintf(response, "TRR NTA\n");
             translatable = 0;
         } else {
